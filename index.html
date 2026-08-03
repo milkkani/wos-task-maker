@@ -1,1 +1,168 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
 
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+  >
+
+  <title>ホワサバ週間タスク表</title>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+  <main class="app">
+    <h1>週間タスク表作成エディタ</h1>
+
+    <!-- イベントタブ -->
+    <section class="tabs-area">
+      <div id="eventTabs" class="event-tabs"></div>
+
+      <button
+        id="addEventButton"
+        class="add-event-button"
+        type="button"
+        aria-label="イベント追加"
+      >
+        ＋
+      </button>
+    </section>
+
+    <!-- イベント編集 -->
+    <section class="editor-card">
+      <div class="event-name-row">
+        <label for="eventNameInput">イベント名</label>
+
+        <input
+          id="eventNameInput"
+          type="text"
+          maxlength="20"
+          placeholder="イベント名"
+        >
+      </div>
+
+      <div class="button-row">
+        <button
+          id="addTaskButton"
+          class="green-button"
+          type="button"
+        >
+          ＋ タスク追加
+        </button>
+
+        <button
+          id="shiftLeftButton"
+          class="orange-button"
+          type="button"
+        >
+          ←
+        </button>
+
+        <span class="shift-label">曜日シフト</span>
+
+        <button
+          id="shiftRightButton"
+          class="orange-button"
+          type="button"
+        >
+          →
+        </button>
+      </div>
+
+      <div class="table-scroll">
+        <table class="task-table">
+          <thead>
+            <tr>
+              <th class="task-name-column">タスク</th>
+              <th>月</th>
+              <th>火</th>
+              <th>水</th>
+              <th>木</th>
+              <th>金</th>
+              <th>土</th>
+              <th>日</th>
+              <th class="delete-column">削除</th>
+            </tr>
+          </thead>
+
+          <tbody id="taskTableBody"></tbody>
+        </table>
+      </div>
+
+      <button
+        id="deleteEventButton"
+        class="delete-event-button"
+        type="button"
+      >
+        このイベントを削除
+      </button>
+    </section>
+
+    <!-- 出力設定 -->
+    <section class="output-card">
+      <div class="setting-row">
+        <label for="symbolInput">
+          出力記号
+        </label>
+
+        <input
+          id="symbolInput"
+          type="text"
+          value="◎○△□◇☆"
+          maxlength="20"
+        >
+      </div>
+
+      <div class="setting-row">
+        <label for="spacingSelect">
+          空白調整
+        </label>
+
+        <select id="spacingSelect">
+          <option value="compact">狭い</option>
+          <option value="normal" selected>標準</option>
+          <option value="wide">広い</option>
+        </select>
+      </div>
+
+      <div class="setting-row">
+        <label for="separatorSelect">
+          区切り記号
+        </label>
+
+        <select id="separatorSelect">
+          <option value="│" selected>│</option>
+          <option value="｜">｜</option>
+          <option value="space">空白のみ</option>
+        </select>
+      </div>
+
+      <button
+        id="createButton"
+        class="create-button"
+        type="button"
+      >
+        テキスト表を作成してコピー
+      </button>
+
+      <div class="output-information">
+        <span id="characterCount">文字数：0</span>
+        <span id="lineCount">改行数：0</span>
+      </div>
+
+      <textarea
+        id="outputText"
+        readonly
+        placeholder="ここにホワサバ用テキストが表示されます"
+      ></textarea>
+
+      <p id="copyMessage" class="copy-message"></p>
+    </section>
+  </main>
+
+  <script src="script.js"></script>
+</body>
+</html>
