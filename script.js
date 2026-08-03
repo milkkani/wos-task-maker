@@ -3173,7 +3173,7 @@ loadSavedData();
 
 updateCurrentClock();
 updateAllCountdowns();
-updateMarchDisplays();
+updateMyMarchDisplays();
 
 
 /*
