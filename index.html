@@ -12,41 +12,46 @@
 
   <title>WOS 行軍タイミングツール</title>
 
-  <link rel="stylesheet" href="./style.css?v=10">
+  <link rel="stylesheet" href="./style.css?v=20">
 </head>
 
 <body>
 
   <main class="app-container">
 
-    <!-- =========================
-         ヘッダー
-    ========================== -->
+    <!-- ヘッダー -->
 
     <header class="app-header">
 
       <div class="title-area">
-        <h1>WOS 行軍タイミングツール</h1>
+
+        <h1>
+          WOS 行軍タイミングツール
+        </h1>
 
         <p>
-          王城着弾・差し込み・行軍加速計算
+          王城着弾・差し込み・座標計算・行軍加速
         </p>
+
       </div>
 
+
       <div class="current-clock-card">
-        <span>現在時刻</span>
+
+        <span>
+          現在時刻
+        </span>
 
         <strong id="currentTime">
           --:--:--.-
         </strong>
+
       </div>
 
     </header>
 
 
-    <!-- =========================
-         モード切替
-    ========================== -->
+    <!-- モード切り替え -->
 
     <nav class="mode-tabs">
 
@@ -54,7 +59,6 @@
         id="insertModeButton"
         class="mode-tab active"
         type="button"
-        data-mode="insert"
       >
         🛡 差し込み計算
       </button>
@@ -63,7 +67,6 @@
         id="arrivalModeButton"
         class="mode-tab"
         type="button"
-        data-mode="arrival"
       >
         🏰 着弾時刻計算
       </button>
@@ -71,30 +74,130 @@
     </nav>
 
 
-    <!-- =========================
-         共通設定
-    ========================== -->
+    <!-- 共通：防衛施設 -->
+
+    <section class="panel">
+
+      <div class="panel-heading">
+
+        <div>
+
+          <h2>
+            今回の防衛施設
+          </h2>
+
+          <p>
+            王城・砦・要塞など、全集結が向かう目的地です。
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="coordinate-card shared-target-card">
+
+        <h3>
+          防衛施設の座標
+        </h3>
+
+        <div class="coordinate-inputs">
+
+          <label>
+
+            <span>
+              X
+            </span>
+
+            <input
+              id="defenseCoordinateX"
+              class="coordinate-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="4"
+              placeholder="例：600"
+              autocomplete="off"
+            >
+
+          </label>
+
+
+          <label>
+
+            <span>
+              Y
+            </span>
+
+            <input
+              id="defenseCoordinateY"
+              class="coordinate-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="4"
+              placeholder="例：600"
+              autocomplete="off"
+            >
+
+          </label>
+
+        </div>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label for="defenseTargetType">
+          施設の種類
+        </label>
+
+        <select id="defenseTargetType">
+
+          <option value="castle">
+            王城・砦・要塞
+          </option>
+
+          <option value="city">
+            プレイヤー都市
+          </option>
+
+        </select>
+
+      </div>
+
+    </section>
+
+
+    <!-- 自分の設定 -->
 
     <section class="panel settings-panel">
 
       <div class="panel-heading">
 
         <div>
-          <h2>自分の設定</h2>
+
+          <h2>
+            自分の設定
+          </h2>
 
           <p>
-            座標または手入力で、自分の行軍時間を設定します。
+            手入力または現在座標から行軍時間を設定します。
           </p>
+
         </div>
 
       </div>
 
 
-      <!-- 行軍時間の設定方法 -->
+      <!-- 自分の行軍時間設定方法 -->
 
       <div class="setting-block">
 
-        <h3>行軍時間の設定方法</h3>
+        <h3>
+          自分の行軍時間
+        </h3>
 
         <div class="segmented-control">
 
@@ -102,7 +205,6 @@
             id="manualMarchModeButton"
             class="segment-button active"
             type="button"
-            data-march-mode="manual"
           >
             手入力
           </button>
@@ -111,7 +213,6 @@
             id="coordinateMarchModeButton"
             class="segment-button"
             type="button"
-            data-march-mode="coordinate"
           >
             座標から推定
           </button>
@@ -121,7 +222,7 @@
       </div>
 
 
-      <!-- 手入力 -->
+      <!-- 自分：手入力 -->
 
       <div
         id="manualMarchSettings"
@@ -144,23 +245,26 @@
               pattern="[0-9]*"
               maxlength="2"
               value="0"
-              placeholder="0"
               autocomplete="off"
             >
 
-            <span>分</span>
+            <span>
+              分
+            </span>
 
             <input
               id="myMarchSeconds"
               class="numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="4"
+              maxlength="5"
               placeholder="例：38"
               autocomplete="off"
             >
 
-            <span>秒</span>
+            <span>
+              秒
+            </span>
 
           </div>
 
@@ -169,126 +273,61 @@
       </div>
 
 
-      <!-- 座標入力 -->
+      <!-- 自分：座標入力 -->
 
       <div
         id="coordinateMarchSettings"
         class="march-settings-section hidden"
       >
 
-        <div class="coordinate-grid">
+        <div class="coordinate-card">
 
-          <div class="coordinate-card">
+          <h3>
+            自分の現在座標
+          </h3>
 
-            <h3>自分の現在座標</h3>
+          <div class="coordinate-inputs">
 
-            <div class="coordinate-inputs">
+            <label>
 
-              <label>
-                <span>X</span>
+              <span>
+                X
+              </span>
 
-                <input
-                  id="myCoordinateX"
-                  class="coordinate-input numeric-input cursor-end-input"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="4"
-                  placeholder="例：452"
-                  autocomplete="off"
-                >
-              </label>
+              <input
+                id="myCoordinateX"
+                class="coordinate-input numeric-input cursor-end-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="例：452"
+                autocomplete="off"
+              >
 
-              <label>
-                <span>Y</span>
-
-                <input
-                  id="myCoordinateY"
-                  class="coordinate-input numeric-input cursor-end-input"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="4"
-                  placeholder="例：751"
-                  autocomplete="off"
-                >
-              </label>
-
-            </div>
-
-          </div>
+            </label>
 
 
-          <button
-            id="swapCoordinatesButton"
-            class="swap-button"
-            type="button"
-            aria-label="自分と目的地の座標を入れ替える"
-          >
-            ⇄
-          </button>
+            <label>
 
+              <span>
+                Y
+              </span>
 
-          <div class="coordinate-card">
+              <input
+                id="myCoordinateY"
+                class="coordinate-input numeric-input cursor-end-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="例：751"
+                autocomplete="off"
+              >
 
-            <h3>目的地の座標</h3>
-
-            <div class="coordinate-inputs">
-
-              <label>
-                <span>X</span>
-
-                <input
-                  id="targetCoordinateX"
-                  class="coordinate-input numeric-input cursor-end-input"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="4"
-                  placeholder="例：600"
-                  autocomplete="off"
-                >
-              </label>
-
-              <label>
-                <span>Y</span>
-
-                <input
-                  id="targetCoordinateY"
-                  class="coordinate-input numeric-input cursor-end-input"
-                  type="text"
-                  inputmode="numeric"
-                  pattern="[0-9]*"
-                  maxlength="4"
-                  placeholder="例：600"
-                  autocomplete="off"
-                >
-              </label>
-
-            </div>
+            </label>
 
           </div>
-
-        </div>
-
-
-        <div class="form-row">
-
-          <label for="targetType">
-            目的地の種類
-          </label>
-
-          <select id="targetType">
-
-            <option value="castle">
-              王城・砦・要塞
-            </option>
-
-            <option value="city">
-              プレイヤー都市
-            </option>
-
-          </select>
 
         </div>
 
@@ -298,7 +337,7 @@
           <div class="coordinate-result-main">
 
             <span>
-              推定行軍時間
+              自分の推定行軍時間
             </span>
 
             <strong id="estimatedMarchTime">
@@ -306,6 +345,7 @@
             </strong>
 
           </div>
+
 
           <div class="coordinate-result-details">
 
@@ -325,18 +365,14 @@
 
           </div>
 
+
           <button
             id="applyEstimatedMarchButton"
             class="secondary-button"
             type="button"
           >
-            この推定時間を使用
+            推定時間を手入力欄へ反映
           </button>
-
-          <p class="estimate-warning">
-            座標計算は実測データを基にした推定です。
-            実際のゲーム表示と異なる場合は手入力で上書きしてください。
-          </p>
 
         </div>
 
@@ -350,12 +386,17 @@
         <div class="setting-title-row">
 
           <div>
-            <h3>🐆 ユキヒョウ</h3>
+
+            <h3>
+              🐆 自分のユキヒョウ
+            </h3>
 
             <p>
-              発動中の場合だけ行軍速度補正を適用します。
+              発動中の場合だけ補正を適用します。
             </p>
+
           </div>
+
 
           <label class="switch-label">
 
@@ -391,35 +432,35 @@
             </option>
 
             <option value="1">
-              Lv1（+15%）
+              Lv1
             </option>
 
             <option value="2">
-              Lv2（+17%）
+              Lv2
             </option>
 
             <option value="3">
-              Lv3（+19%）
+              Lv3
             </option>
 
             <option value="4">
-              Lv4（+21%）
+              Lv4
             </option>
 
             <option value="5">
-              Lv5（+23%）
+              Lv5
             </option>
 
             <option value="6">
-              Lv6（実測補正）
+              Lv6
             </option>
 
             <option value="7">
-              Lv7（+27%）
+              Lv7
             </option>
 
             <option value="8">
-              Lv8（実測補正）
+              Lv8
             </option>
 
           </select>
@@ -430,19 +471,28 @@
         <div class="buff-time-comparison">
 
           <div>
-            <span>通常</span>
+
+            <span>
+              通常時間
+            </span>
 
             <strong id="normalMarchTimeDisplay">
               --分--秒
             </strong>
+
           </div>
 
+
           <div>
-            <span>バフ適用後</span>
+
+            <span>
+              バフ適用後
+            </span>
 
             <strong id="buffedMarchTimeDisplay">
               --分--秒
             </strong>
+
           </div>
 
         </div>
@@ -450,11 +500,14 @@
       </div>
 
 
-      <!-- 共通補正 -->
+      <!-- タイミング補正 -->
 
       <div class="setting-block">
 
-        <h3>タイミング補正</h3>
+        <h3>
+          タイミング補正
+        </h3>
+
 
         <div class="form-row">
 
@@ -469,12 +522,14 @@
               class="numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="4"
+              maxlength="5"
               value="0.5"
               autocomplete="off"
             >
 
-            <span>秒後</span>
+            <span>
+              秒後
+            </span>
 
           </div>
 
@@ -494,16 +549,19 @@
               class="numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="5"
+              maxlength="6"
               value="0"
               autocomplete="off"
             >
 
-            <span>秒</span>
+            <span>
+              秒
+            </span>
 
           </div>
 
         </div>
+
 
         <p class="help-text">
           実際の着弾が遅れる場合はマイナス、
@@ -515,9 +573,7 @@
     </section>
 
 
-    <!-- =========================
-         差し込みモード
-    ========================== -->
+    <!-- 差し込みモード -->
 
     <section
       id="insertModeSection"
@@ -529,12 +585,17 @@
         <div class="panel-heading">
 
           <div>
-            <h2>相手の集結</h2>
+
+            <h2>
+              相手の集結
+            </h2>
 
             <p>
-              集結主ごとの行軍時間と残り時間を入力します。
+              相手ごとに手入力または座標から行軍時間を設定します。
             </p>
+
           </div>
+
 
           <button
             id="addRallyButton"
@@ -562,7 +623,7 @@
             class="secondary-button danger-outline"
             type="button"
           >
-            計算結果を全クリア
+            結果を全クリア
           </button>
 
           <button
@@ -585,19 +646,24 @@
       </section>
 
 
-      <!-- 多段着弾分析 -->
+      <!-- 多段分析 -->
 
       <section class="panel">
 
         <div class="panel-heading">
 
           <div>
-            <h2>多段着弾分析</h2>
+
+            <h2>
+              多段着弾分析
+            </h2>
 
             <p>
               計算済みの相手を着弾順に比較します。
             </p>
+
           </div>
+
 
           <button
             id="analyzeGapsButton"
@@ -614,7 +680,7 @@
           id="gapAnalysisResult"
           class="empty-result"
         >
-          2人以上の相手を計算すると、着弾間隔を分析できます。
+          2人以上の相手を計算すると着弾間隔を分析できます。
         </div>
 
       </section>
@@ -622,9 +688,7 @@
     </section>
 
 
-    <!-- =========================
-         着弾計算モード
-    ========================== -->
+    <!-- 着弾時刻計算モード -->
 
     <section
       id="arrivalModeSection"
@@ -636,11 +700,15 @@
         <div class="panel-heading">
 
           <div>
-            <h2>指定時刻への着弾</h2>
+
+            <h2>
+              指定時刻への着弾
+            </h2>
 
             <p>
-              到着させたい時刻から、自分の出撃時刻を逆算します。
+              目標着弾時刻から自分の出撃時刻を逆算します。
             </p>
+
           </div>
 
         </div>
@@ -649,7 +717,10 @@
         <div class="target-time-grid">
 
           <label>
-            <span>時</span>
+
+            <span>
+              時
+            </span>
 
             <input
               id="targetArrivalHour"
@@ -660,12 +731,19 @@
               placeholder="20"
               autocomplete="off"
             >
+
           </label>
 
-          <span>:</span>
+          <span>
+            :
+          </span>
+
 
           <label>
-            <span>分</span>
+
+            <span>
+              分
+            </span>
 
             <input
               id="targetArrivalMinute"
@@ -676,22 +754,30 @@
               placeholder="30"
               autocomplete="off"
             >
+
           </label>
 
-          <span>:</span>
+          <span>
+            :
+          </span>
+
 
           <label>
-            <span>秒</span>
+
+            <span>
+              秒
+            </span>
 
             <input
               id="targetArrivalSecond"
               class="numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="4"
+              maxlength="5"
               placeholder="00.0"
               autocomplete="off"
             >
+
           </label>
 
         </div>
@@ -712,27 +798,41 @@
         >
 
           <div class="result-line">
-            <span>目標着弾</span>
+
+            <span>
+              目標着弾
+            </span>
 
             <strong id="arrivalTargetResult">
               --:--:--.-
             </strong>
+
           </div>
 
+
           <div class="result-line main-result-line">
-            <span>自分の出撃</span>
+
+            <span>
+              自分の出撃
+            </span>
 
             <strong id="arrivalDepartureResult">
               --:--:--.-
             </strong>
+
           </div>
 
+
           <div class="result-line">
-            <span>出撃まで</span>
+
+            <span>
+              出撃まで
+            </span>
 
             <strong id="arrivalCountdownResult">
               未計算
             </strong>
+
           </div>
 
         </div>
@@ -742,23 +842,26 @@
     </section>
 
 
-    <!-- =========================
-         データ管理
-    ========================== -->
+    <!-- データ管理 -->
 
     <section class="panel data-panel">
 
       <div class="panel-heading">
 
         <div>
-          <h2>データ管理</h2>
+
+          <h2>
+            データ管理
+          </h2>
 
           <p>
             入力内容は端末内に自動保存されます。
           </p>
+
         </div>
 
       </div>
+
 
       <div class="data-buttons">
 
@@ -788,6 +891,7 @@
 
       </div>
 
+
       <input
         id="importFileInput"
         type="file"
@@ -800,9 +904,7 @@
   </main>
 
 
-  <!-- =========================
-       出撃通知
-  ========================== -->
+  <!-- 出撃通知 -->
 
   <div
     id="alertOverlay"
@@ -845,9 +947,7 @@
   </div>
 
 
-  <!-- =========================
-       集結カードテンプレート
-  ========================== -->
+  <!-- 相手集結カード -->
 
   <template id="rallyCardTemplate">
 
@@ -879,7 +979,40 @@
       </div>
 
 
-      <div class="card-section">
+      <!-- 相手行軍時間の設定方法 -->
+
+      <div class="enemy-march-setting-block">
+
+        <h3>
+          相手の行軍時間
+        </h3>
+
+        <div class="segmented-control enemy-march-mode-control">
+
+          <button
+            class="segment-button enemy-manual-mode-button active"
+            type="button"
+            data-enemy-march-mode="manual"
+          >
+            手入力
+          </button>
+
+          <button
+            class="segment-button enemy-coordinate-mode-button"
+            type="button"
+            data-enemy-march-mode="coordinate"
+          >
+            座標から推定
+          </button>
+
+        </div>
+
+      </div>
+
+
+      <!-- 相手：手入力 -->
+
+      <div class="enemy-manual-settings">
 
         <div class="form-row">
 
@@ -899,23 +1032,203 @@
               autocomplete="off"
             >
 
-            <span>分</span>
+            <span>
+              分
+            </span>
 
             <input
               class="enemy-march-seconds-input numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="4"
+              maxlength="5"
               placeholder="例：38"
               autocomplete="off"
             >
 
-            <span>秒</span>
+            <span>
+              秒
+            </span>
 
           </div>
 
         </div>
 
+      </div>
+
+
+      <!-- 相手：座標入力 -->
+
+      <div class="enemy-coordinate-settings hidden">
+
+        <div class="coordinate-card">
+
+          <h3>
+            相手集結主の都市座標
+          </h3>
+
+          <div class="coordinate-inputs">
+
+            <label>
+
+              <span>
+                X
+              </span>
+
+              <input
+                class="enemy-coordinate-x numeric-input cursor-end-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="例：452"
+                autocomplete="off"
+              >
+
+            </label>
+
+
+            <label>
+
+              <span>
+                Y
+              </span>
+
+              <input
+                class="enemy-coordinate-y numeric-input cursor-end-input"
+                type="text"
+                inputmode="numeric"
+                pattern="[0-9]*"
+                maxlength="4"
+                placeholder="例：751"
+                autocomplete="off"
+              >
+
+            </label>
+
+          </div>
+
+        </div>
+
+
+        <div class="enemy-buff-row">
+
+          <label class="switch-label compact-switch-label">
+
+            <input
+              class="enemy-snow-leopard-active"
+              type="checkbox"
+            >
+
+            <span class="switch-ui"></span>
+
+            <span class="switch-text">
+              相手ユキヒョウ発動中
+            </span>
+
+          </label>
+
+
+          <select
+            class="enemy-snow-leopard-level"
+            disabled
+          >
+
+            <option value="0">
+              なし
+            </option>
+
+            <option value="1">
+              Lv1
+            </option>
+
+            <option value="2">
+              Lv2
+            </option>
+
+            <option value="3">
+              Lv3
+            </option>
+
+            <option value="4">
+              Lv4
+            </option>
+
+            <option value="5">
+              Lv5
+            </option>
+
+            <option value="6">
+              Lv6
+            </option>
+
+            <option value="7">
+              Lv7
+            </option>
+
+            <option value="8">
+              Lv8
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="enemy-coordinate-result-card">
+
+          <div class="coordinate-result-main">
+
+            <span>
+              相手の推定行軍時間
+            </span>
+
+            <strong class="enemy-estimated-march-time">
+              未計算
+            </strong>
+
+          </div>
+
+
+          <div class="coordinate-result-details">
+
+            <span>
+              直線距離：
+              <strong class="enemy-estimated-distance">
+                --
+              </strong>
+            </span>
+
+            <span>
+              通常時間：
+              <strong class="enemy-normal-estimated-time">
+                --
+              </strong>
+            </span>
+
+          </div>
+
+
+          <button
+            class="secondary-button apply-enemy-estimated-button"
+            type="button"
+          >
+            推定時間を手入力欄へ反映
+          </button>
+
+
+          <p class="estimate-warning">
+            相手の実際の行軍速度バフが不明な場合、
+            ゲーム表示と差が出る可能性があります。
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <!-- 相手の現在状態 -->
+
+      <div class="card-section">
 
         <div class="form-row">
 
@@ -964,18 +1277,22 @@
               autocomplete="off"
             >
 
-            <span>分</span>
+            <span>
+              分
+            </span>
 
             <input
               class="remaining-seconds-input numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="4"
+              maxlength="5"
               placeholder="例：10"
               autocomplete="off"
             >
 
-            <span>秒</span>
+            <span>
+              秒
+            </span>
 
           </div>
 
@@ -992,57 +1309,87 @@
       </div>
 
 
-      <!-- 通常結果 -->
+      <!-- 通常計算結果 -->
 
       <div class="rally-result-panel">
 
         <div class="result-line">
-          <span>入力取得</span>
+
+          <span>
+            入力取得
+          </span>
 
           <strong class="captured-time-result">
             --:--:--.-
           </strong>
+
         </div>
 
+
         <div class="result-line">
-          <span>相手出発</span>
+
+          <span>
+            相手出発
+          </span>
 
           <strong class="enemy-departure-result">
             --:--:--.-
           </strong>
+
         </div>
 
+
         <div class="result-line">
-          <span>相手着弾</span>
+
+          <span>
+            相手着弾
+          </span>
 
           <strong class="enemy-arrival-result">
             --:--:--.-
           </strong>
+
         </div>
 
+
         <div class="result-line main-result-line">
-          <span>自分の出撃</span>
+
+          <span>
+            自分の出撃
+          </span>
 
           <strong class="my-departure-result">
             --:--:--.-
           </strong>
+
         </div>
 
+
         <div class="result-line">
-          <span>自分着弾</span>
+
+          <span>
+            自分着弾
+          </span>
 
           <strong class="my-arrival-result">
             --:--:--.-
           </strong>
+
         </div>
 
+
         <div class="result-line countdown-result-line">
-          <span>出撃まで</span>
+
+          <span>
+            出撃まで
+          </span>
 
           <strong class="countdown-result">
             未計算
           </strong>
+
         </div>
+
 
         <p class="result-message">
           残り時間を入力して計算してください。
@@ -1059,12 +1406,14 @@
           出撃が遅れた時の加速計算
         </summary>
 
+
         <div class="acceleration-content">
 
           <p class="acceleration-help">
-            実際に行軍を出した時点でボタンを押すと、
-            25%・50%加速で目標着弾へ追いつけるか計算します。
+            実際に出撃した瞬間に押すと、
+            25%・50%加速で追いつけるか計算します。
           </p>
+
 
           <button
             class="record-actual-departure-button"
@@ -1077,19 +1426,28 @@
           <div class="actual-departure-result">
 
             <div class="result-line">
-              <span>実際の出撃</span>
+
+              <span>
+                実際の出撃
+              </span>
 
               <strong class="actual-departure-time">
                 未記録
               </strong>
+
             </div>
 
+
             <div class="result-line">
-              <span>予定との差</span>
+
+              <span>
+                予定との差
+              </span>
 
               <strong class="departure-delay-result">
                 --
               </strong>
+
             </div>
 
           </div>
@@ -1099,7 +1457,9 @@
 
             <article class="acceleration-option no-boost-option">
 
-              <h4>加速なし</h4>
+              <h4>
+                加速なし
+              </h4>
 
               <strong class="no-boost-arrival">
                 --
@@ -1114,7 +1474,9 @@
 
             <article class="acceleration-option boost-25-option">
 
-              <h4>25%加速</h4>
+              <h4>
+                25%加速
+              </h4>
 
               <strong class="boost-25-arrival">
                 --
@@ -1129,7 +1491,9 @@
 
             <article class="acceleration-option boost-50-option">
 
-              <h4>50%加速</h4>
+              <h4>
+                50%加速
+              </h4>
 
               <strong class="boost-50-arrival">
                 --
@@ -1146,7 +1510,9 @@
 
           <div class="best-acceleration-result">
 
-            <span>おすすめ</span>
+            <span>
+              おすすめ
+            </span>
 
             <strong class="best-acceleration-text">
               出撃後に計算できます
@@ -1163,7 +1529,7 @@
   </template>
 
 
-  <script src="./script.js?v=10"></script>
+  <script src="./script.js?v=20"></script>
 
 </body>
 </html>
