@@ -8,21 +8,33 @@
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   >
 
-  <title>WOS 差し込み時刻計算</title>
+  <meta name="theme-color" content="#101114">
 
-  <link rel="stylesheet" href="./style.css?v=3">
+  <title>WOS 行軍タイミングツール</title>
+
+  <link rel="stylesheet" href="./style.css?v=10">
 </head>
 
 <body>
 
-  <main class="container">
+  <main class="app-container">
 
-    <header class="page-header">
+    <!-- =========================
+         ヘッダー
+    ========================== -->
 
-      <h1>WOS 差し込み時刻計算</h1>
+    <header class="app-header">
 
-      <div class="current-time-area">
-        <span>現在時刻：</span>
+      <div class="title-area">
+        <h1>WOS 行軍タイミングツール</h1>
+
+        <p>
+          王城着弾・差し込み・行軍加速計算
+        </p>
+      </div>
+
+      <div class="current-clock-card">
+        <span>現在時刻</span>
 
         <strong id="currentTime">
           --:--:--.-
@@ -32,196 +44,765 @@
     </header>
 
 
-    <section class="settings-card">
+    <!-- =========================
+         モード切替
+    ========================== -->
 
-      <h2>自分の設定</h2>
+    <nav class="mode-tabs">
+
+      <button
+        id="insertModeButton"
+        class="mode-tab active"
+        type="button"
+        data-mode="insert"
+      >
+        🛡 差し込み計算
+      </button>
+
+      <button
+        id="arrivalModeButton"
+        class="mode-tab"
+        type="button"
+        data-mode="arrival"
+      >
+        🏰 着弾時刻計算
+      </button>
+
+    </nav>
 
 
-      <div class="form-row">
+    <!-- =========================
+         共通設定
+    ========================== -->
 
-        <label>
-          自分の行軍時間
-        </label>
+    <section class="panel settings-panel">
 
-        <div class="minute-second-group">
+      <div class="panel-heading">
 
-          <input
-            id="myMarchMinutes"
-            type="number"
-            min="0"
-            max="99"
-            step="1"
-            inputmode="numeric"
-            value="0"
-            placeholder="0"
+        <div>
+          <h2>自分の設定</h2>
+
+          <p>
+            座標または手入力で、自分の行軍時間を設定します。
+          </p>
+        </div>
+
+      </div>
+
+
+      <!-- 行軍時間の設定方法 -->
+
+      <div class="setting-block">
+
+        <h3>行軍時間の設定方法</h3>
+
+        <div class="segmented-control">
+
+          <button
+            id="manualMarchModeButton"
+            class="segment-button active"
+            type="button"
+            data-march-mode="manual"
           >
+            手入力
+          </button>
 
-          <span>分</span>
-
-          <input
-            id="myMarchSeconds"
-            type="number"
-            min="0"
-            max="59.9"
-            step="0.1"
-            inputmode="decimal"
-            placeholder="例：30"
+          <button
+            id="coordinateMarchModeButton"
+            class="segment-button"
+            type="button"
+            data-march-mode="coordinate"
           >
-
-          <span>秒</span>
+            座標から推定
+          </button>
 
         </div>
 
       </div>
 
 
-      <div class="form-row">
+      <!-- 手入力 -->
 
-        <label for="insertDelay">
-          攻撃後の差し込み補正
-        </label>
+      <div
+        id="manualMarchSettings"
+        class="march-settings-section"
+      >
 
-        <div class="time-input-group">
+        <div class="form-row">
 
-          <input
-            id="insertDelay"
-            type="number"
-            min="0"
-            max="10"
-            step="0.1"
-            inputmode="decimal"
-            value="0.5"
-          >
+          <label>
+            自分の行軍時間
+          </label>
 
-          <span>秒後</span>
+          <div class="minute-second-group">
 
-        </div>
+            <input
+              id="myMarchMinutes"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              value="0"
+              placeholder="0"
+              autocomplete="off"
+            >
 
-      </div>
+            <span>分</span>
 
+            <input
+              id="myMarchSeconds"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="4"
+              placeholder="例：38"
+              autocomplete="off"
+            >
 
-      <div class="form-row">
+            <span>秒</span>
 
-        <label for="tapCorrection">
-          タップ・通信補正
-        </label>
-
-        <div class="time-input-group">
-
-          <input
-            id="tapCorrection"
-            type="number"
-            min="-5"
-            max="5"
-            step="0.1"
-            inputmode="decimal"
-            value="0"
-          >
-
-          <span>秒</span>
+          </div>
 
         </div>
 
       </div>
 
 
-      <p class="help-text">
-        タップ・通信補正は、遅れて着弾する場合はマイナス、
-        早く着弾する場合はプラス方向に調整します。
-      </p>
+      <!-- 座標入力 -->
+
+      <div
+        id="coordinateMarchSettings"
+        class="march-settings-section hidden"
+      >
+
+        <div class="coordinate-grid">
+
+          <div class="coordinate-card">
+
+            <h3>自分の現在座標</h3>
+
+            <div class="coordinate-inputs">
+
+              <label>
+                <span>X</span>
+
+                <input
+                  id="myCoordinateX"
+                  class="coordinate-input numeric-input cursor-end-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="4"
+                  placeholder="例：452"
+                  autocomplete="off"
+                >
+              </label>
+
+              <label>
+                <span>Y</span>
+
+                <input
+                  id="myCoordinateY"
+                  class="coordinate-input numeric-input cursor-end-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="4"
+                  placeholder="例：751"
+                  autocomplete="off"
+                >
+              </label>
+
+            </div>
+
+          </div>
+
+
+          <button
+            id="swapCoordinatesButton"
+            class="swap-button"
+            type="button"
+            aria-label="自分と目的地の座標を入れ替える"
+          >
+            ⇄
+          </button>
+
+
+          <div class="coordinate-card">
+
+            <h3>目的地の座標</h3>
+
+            <div class="coordinate-inputs">
+
+              <label>
+                <span>X</span>
+
+                <input
+                  id="targetCoordinateX"
+                  class="coordinate-input numeric-input cursor-end-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="4"
+                  placeholder="例：600"
+                  autocomplete="off"
+                >
+              </label>
+
+              <label>
+                <span>Y</span>
+
+                <input
+                  id="targetCoordinateY"
+                  class="coordinate-input numeric-input cursor-end-input"
+                  type="text"
+                  inputmode="numeric"
+                  pattern="[0-9]*"
+                  maxlength="4"
+                  placeholder="例：600"
+                  autocomplete="off"
+                >
+              </label>
+
+            </div>
+
+          </div>
+
+        </div>
+
+
+        <div class="form-row">
+
+          <label for="targetType">
+            目的地の種類
+          </label>
+
+          <select id="targetType">
+
+            <option value="castle">
+              王城・砦・要塞
+            </option>
+
+            <option value="city">
+              プレイヤー都市
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="coordinate-result-card">
+
+          <div class="coordinate-result-main">
+
+            <span>
+              推定行軍時間
+            </span>
+
+            <strong id="estimatedMarchTime">
+              未計算
+            </strong>
+
+          </div>
+
+          <div class="coordinate-result-details">
+
+            <span>
+              直線距離：
+              <strong id="estimatedDistance">
+                --
+              </strong>
+            </span>
+
+            <span>
+              推定誤差：
+              <strong id="estimatedError">
+                --
+              </strong>
+            </span>
+
+          </div>
+
+          <button
+            id="applyEstimatedMarchButton"
+            class="secondary-button"
+            type="button"
+          >
+            この推定時間を使用
+          </button>
+
+          <p class="estimate-warning">
+            座標計算は実測データを基にした推定です。
+            実際のゲーム表示と異なる場合は手入力で上書きしてください。
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <!-- ユキヒョウ -->
+
+      <div class="setting-block snow-leopard-block">
+
+        <div class="setting-title-row">
+
+          <div>
+            <h3>🐆 ユキヒョウ</h3>
+
+            <p>
+              発動中の場合だけ行軍速度補正を適用します。
+            </p>
+          </div>
+
+          <label class="switch-label">
+
+            <input
+              id="snowLeopardActive"
+              type="checkbox"
+            >
+
+            <span class="switch-ui"></span>
+
+            <span class="switch-text">
+              発動中
+            </span>
+
+          </label>
+
+        </div>
+
+
+        <div class="form-row">
+
+          <label for="snowLeopardLevel">
+            ユキヒョウLv
+          </label>
+
+          <select
+            id="snowLeopardLevel"
+            disabled
+          >
+
+            <option value="0">
+              なし
+            </option>
+
+            <option value="1">
+              Lv1（+15%）
+            </option>
+
+            <option value="2">
+              Lv2（+17%）
+            </option>
+
+            <option value="3">
+              Lv3（+19%）
+            </option>
+
+            <option value="4">
+              Lv4（+21%）
+            </option>
+
+            <option value="5">
+              Lv5（+23%）
+            </option>
+
+            <option value="6">
+              Lv6（実測補正）
+            </option>
+
+            <option value="7">
+              Lv7（+27%）
+            </option>
+
+            <option value="8">
+              Lv8（実測補正）
+            </option>
+
+          </select>
+
+        </div>
+
+
+        <div class="buff-time-comparison">
+
+          <div>
+            <span>通常</span>
+
+            <strong id="normalMarchTimeDisplay">
+              --分--秒
+            </strong>
+          </div>
+
+          <div>
+            <span>バフ適用後</span>
+
+            <strong id="buffedMarchTimeDisplay">
+              --分--秒
+            </strong>
+          </div>
+
+        </div>
+
+      </div>
+
+
+      <!-- 共通補正 -->
+
+      <div class="setting-block">
+
+        <h3>タイミング補正</h3>
+
+        <div class="form-row">
+
+          <label for="insertDelay">
+            相手攻撃後の差し込み
+          </label>
+
+          <div class="single-time-group">
+
+            <input
+              id="insertDelay"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="4"
+              value="0.5"
+              autocomplete="off"
+            >
+
+            <span>秒後</span>
+
+          </div>
+
+        </div>
+
+
+        <div class="form-row">
+
+          <label for="tapCorrection">
+            タップ・通信補正
+          </label>
+
+          <div class="single-time-group">
+
+            <input
+              id="tapCorrection"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="5"
+              value="0"
+              autocomplete="off"
+            >
+
+            <span>秒</span>
+
+          </div>
+
+        </div>
+
+        <p class="help-text">
+          実際の着弾が遅れる場合はマイナス、
+          早く着弾する場合はプラスへ調整します。
+        </p>
+
+      </div>
 
     </section>
 
 
-    <section class="controls">
-
-      <button
-        id="addCardButton"
-        class="main-button"
-        type="button"
-      >
-        ＋ 集結主追加
-      </button>
-
-      <button
-        id="sortButton"
-        class="sub-button"
-        type="button"
-      >
-        着弾順ソート
-      </button>
-
-      <button
-        id="soundTestButton"
-        class="sub-button"
-        type="button"
-      >
-        通知テスト
-      </button>
-
-    </section>
-
+    <!-- =========================
+         差し込みモード
+    ========================== -->
 
     <section
-      id="rallyCardList"
-      class="rally-card-list"
+      id="insertModeSection"
+      class="mode-section"
     >
+
+      <section class="panel">
+
+        <div class="panel-heading">
+
+          <div>
+            <h2>相手の集結</h2>
+
+            <p>
+              集結主ごとの行軍時間と残り時間を入力します。
+            </p>
+          </div>
+
+          <button
+            id="addRallyButton"
+            class="primary-button"
+            type="button"
+          >
+            ＋ 集結主追加
+          </button>
+
+        </div>
+
+
+        <div class="toolbar">
+
+          <button
+            id="sortByArrivalButton"
+            class="secondary-button"
+            type="button"
+          >
+            着弾順に並べる
+          </button>
+
+          <button
+            id="clearResultsButton"
+            class="secondary-button danger-outline"
+            type="button"
+          >
+            計算結果を全クリア
+          </button>
+
+          <button
+            id="notificationTestButton"
+            class="secondary-button"
+            type="button"
+          >
+            通知テスト
+          </button>
+
+        </div>
+
+
+        <div
+          id="rallyCardList"
+          class="rally-card-list"
+        >
+        </div>
+
+      </section>
+
+
+      <!-- 多段着弾分析 -->
+
+      <section class="panel">
+
+        <div class="panel-heading">
+
+          <div>
+            <h2>多段着弾分析</h2>
+
+            <p>
+              計算済みの相手を着弾順に比較します。
+            </p>
+          </div>
+
+          <button
+            id="analyzeGapsButton"
+            class="primary-button"
+            type="button"
+          >
+            隙間を分析
+          </button>
+
+        </div>
+
+
+        <div
+          id="gapAnalysisResult"
+          class="empty-result"
+        >
+          2人以上の相手を計算すると、着弾間隔を分析できます。
+        </div>
+
+      </section>
+
     </section>
 
 
-    <section class="add-bottom-area">
+    <!-- =========================
+         着弾計算モード
+    ========================== -->
 
-      <button
-        id="addCardBottomButton"
-        class="main-button"
-        type="button"
+    <section
+      id="arrivalModeSection"
+      class="mode-section hidden"
+    >
+
+      <section class="panel">
+
+        <div class="panel-heading">
+
+          <div>
+            <h2>指定時刻への着弾</h2>
+
+            <p>
+              到着させたい時刻から、自分の出撃時刻を逆算します。
+            </p>
+          </div>
+
+        </div>
+
+
+        <div class="target-time-grid">
+
+          <label>
+            <span>時</span>
+
+            <input
+              id="targetArrivalHour"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              placeholder="20"
+              autocomplete="off"
+            >
+          </label>
+
+          <span>:</span>
+
+          <label>
+            <span>分</span>
+
+            <input
+              id="targetArrivalMinute"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              maxlength="2"
+              placeholder="30"
+              autocomplete="off"
+            >
+          </label>
+
+          <span>:</span>
+
+          <label>
+            <span>秒</span>
+
+            <input
+              id="targetArrivalSecond"
+              class="numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="4"
+              placeholder="00.0"
+              autocomplete="off"
+            >
+          </label>
+
+        </div>
+
+
+        <button
+          id="calculateArrivalButton"
+          class="large-primary-button"
+          type="button"
+        >
+          出撃時刻を計算
+        </button>
+
+
+        <div
+          id="arrivalCalculationResult"
+          class="arrival-result-card"
+        >
+
+          <div class="result-line">
+            <span>目標着弾</span>
+
+            <strong id="arrivalTargetResult">
+              --:--:--.-
+            </strong>
+          </div>
+
+          <div class="result-line main-result-line">
+            <span>自分の出撃</span>
+
+            <strong id="arrivalDepartureResult">
+              --:--:--.-
+            </strong>
+          </div>
+
+          <div class="result-line">
+            <span>出撃まで</span>
+
+            <strong id="arrivalCountdownResult">
+              未計算
+            </strong>
+          </div>
+
+        </div>
+
+      </section>
+
+    </section>
+
+
+    <!-- =========================
+         データ管理
+    ========================== -->
+
+    <section class="panel data-panel">
+
+      <div class="panel-heading">
+
+        <div>
+          <h2>データ管理</h2>
+
+          <p>
+            入力内容は端末内に自動保存されます。
+          </p>
+        </div>
+
+      </div>
+
+      <div class="data-buttons">
+
+        <button
+          id="exportDataButton"
+          class="secondary-button"
+          type="button"
+        >
+          データを書き出す
+        </button>
+
+        <button
+          id="importDataButton"
+          class="secondary-button"
+          type="button"
+        >
+          データを読み込む
+        </button>
+
+        <button
+          id="resetAllDataButton"
+          class="secondary-button danger-outline"
+          type="button"
+        >
+          全データ初期化
+        </button>
+
+      </div>
+
+      <input
+        id="importFileInput"
+        type="file"
+        accept=".json,application/json"
+        hidden
       >
-        ＋ 集結主追加
-      </button>
-
-    </section>
-
-
-    <section class="usage-card">
-
-      <h2>使い方</h2>
-
-      <ol>
-
-        <li>
-          最初に、自分の都市から防衛施設までの行軍時間を
-          分・秒で入力します。
-        </li>
-
-        <li>
-          調査した相手の集結主名と行軍時間を入力します。
-        </li>
-
-        <li>
-          相手がまだ集結中なら「集結残り」を選択します。
-        </li>
-
-        <li>
-          相手がすでに出発している場合は
-          「行軍残り」を選択します。
-        </li>
-
-        <li>
-          ゲーム画面に表示されている残り時間を入力して、
-          「この瞬間で計算」を押します。
-        </li>
-
-        <li>
-          表示された「自分の出撃時刻」に合わせて
-          行軍ボタンを押します。
-        </li>
-
-      </ol>
 
     </section>
 
   </main>
 
+
+  <!-- =========================
+       出撃通知
+  ========================== -->
 
   <div
     id="alertOverlay"
@@ -231,8 +812,18 @@
 
     <div class="alert-box">
 
+      <div class="alert-icon">
+        ⚡
+      </div>
+
       <div class="alert-title">
         今です！
+      </div>
+
+      <div
+        id="alertRallyName"
+        class="alert-rally-name"
+      >
       </div>
 
       <div
@@ -254,243 +845,325 @@
   </div>
 
 
+  <!-- =========================
+       集結カードテンプレート
+  ========================== -->
+
   <template id="rallyCardTemplate">
 
     <article class="rally-card">
 
       <button
-        class="delete-card-button"
+        class="delete-rally-button"
         type="button"
-        aria-label="カードを削除"
+        aria-label="集結主を削除"
       >
         ×
       </button>
 
 
-      <div class="card-top-row">
+      <div class="rally-card-header">
 
         <input
-          class="rally-name-input"
+          class="rally-name-input cursor-end-input"
           type="text"
           maxlength="30"
           placeholder="相手の集結主名"
+          autocomplete="off"
         >
 
-        <span class="card-number">
+        <span class="rally-card-number">
           1
         </span>
 
       </div>
 
 
-      <div class="form-row">
+      <div class="card-section">
 
-        <label>
-          相手の行軍時間
-        </label>
+        <div class="form-row">
 
-        <div class="minute-second-group">
+          <label>
+            相手の行軍時間
+          </label>
 
-          <input
-            class="enemy-march-minutes-input"
-            type="number"
-            min="0"
-            max="99"
-            step="1"
-            inputmode="numeric"
-            value="0"
-            placeholder="0"
-          >
+          <div class="minute-second-group">
 
-          <span>分</span>
+            <input
+              class="enemy-march-minutes-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              value="0"
+              autocomplete="off"
+            >
 
-          <input
-            class="enemy-march-seconds-input"
-            type="number"
-            min="0"
-            max="59.9"
-            step="0.1"
-            inputmode="decimal"
-            placeholder="例：38"
-          >
+            <span>分</span>
 
-          <span>秒</span>
+            <input
+              class="enemy-march-seconds-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="4"
+              placeholder="例：38"
+              autocomplete="off"
+            >
 
-        </div>
+            <span>秒</span>
 
-      </div>
-
-
-      <div class="form-row">
-
-        <label>
-          現在の状態
-        </label>
-
-        <select class="timer-mode-select">
-
-          <option value="rally">
-            集結残り
-          </option>
-
-          <option value="march">
-            行軍残り
-          </option>
-
-        </select>
-
-      </div>
-
-
-      <div class="form-row">
-
-        <label class="remaining-time-label">
-          集結残り時間
-        </label>
-
-        <div class="minute-second-group">
-
-          <input
-            class="remaining-minutes-input"
-            type="number"
-            min="0"
-            max="99"
-            step="1"
-            inputmode="numeric"
-            value="0"
-            placeholder="0"
-          >
-
-          <span>分</span>
-
-          <input
-            class="remaining-seconds-input"
-            type="number"
-            min="0"
-            max="59.9"
-            step="0.1"
-            inputmode="decimal"
-            placeholder="例：10"
-          >
-
-          <span>秒</span>
+          </div>
 
         </div>
 
-      </div>
+
+        <div class="form-row">
+
+          <label>
+            現在の状態
+          </label>
+
+          <div class="card-mode-buttons">
+
+            <button
+              class="card-mode-button active"
+              type="button"
+              data-card-mode="rally"
+            >
+              集結中
+            </button>
+
+            <button
+              class="card-mode-button"
+              type="button"
+              data-card-mode="march"
+            >
+              行軍中
+            </button>
+
+          </div>
+
+        </div>
 
 
-      <div class="card-button-row">
+        <div class="form-row">
+
+          <label class="remaining-time-label">
+            集結残り時間
+          </label>
+
+          <div class="minute-second-group">
+
+            <input
+              class="remaining-minutes-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="numeric"
+              pattern="[0-9]*"
+              maxlength="2"
+              value="0"
+              autocomplete="off"
+            >
+
+            <span>分</span>
+
+            <input
+              class="remaining-seconds-input numeric-input cursor-end-input"
+              type="text"
+              inputmode="decimal"
+              maxlength="4"
+              placeholder="例：10"
+              autocomplete="off"
+            >
+
+            <span>秒</span>
+
+          </div>
+
+        </div>
+
 
         <button
-          class="calculate-button"
+          class="capture-calculate-button"
           type="button"
         >
           この瞬間で計算
         </button>
 
-        <button
-          class="clear-result-button"
-          type="button"
-        >
-          結果クリア
-        </button>
-
       </div>
 
 
-      <div class="result-panel">
+      <!-- 通常結果 -->
 
-        <div class="result-row">
+      <div class="rally-result-panel">
 
-          <span>
-            入力取得時刻：
-          </span>
+        <div class="result-line">
+          <span>入力取得</span>
 
           <strong class="captured-time-result">
             --:--:--.-
           </strong>
-
         </div>
 
-
-        <div class="result-row">
-
-          <span>
-            相手の出発：
-          </span>
+        <div class="result-line">
+          <span>相手出発</span>
 
           <strong class="enemy-departure-result">
             --:--:--.-
           </strong>
-
         </div>
 
-
-        <div class="result-row">
-
-          <span>
-            相手の着弾：
-          </span>
+        <div class="result-line">
+          <span>相手着弾</span>
 
           <strong class="enemy-arrival-result">
             --:--:--.-
           </strong>
-
         </div>
 
-
-        <div class="result-row highlight-row">
-
-          <span>
-            自分の出撃：
-          </span>
+        <div class="result-line main-result-line">
+          <span>自分の出撃</span>
 
           <strong class="my-departure-result">
             --:--:--.-
           </strong>
-
         </div>
 
-
-        <div class="result-row">
-
-          <span>
-            自分の着弾：
-          </span>
+        <div class="result-line">
+          <span>自分着弾</span>
 
           <strong class="my-arrival-result">
             --:--:--.-
           </strong>
-
         </div>
 
-
-        <div class="result-row countdown-row">
-
-          <span>
-            出撃まで：
-          </span>
+        <div class="result-line countdown-result-line">
+          <span>出撃まで</span>
 
           <strong class="countdown-result">
             未計算
           </strong>
-
         </div>
 
-
-        <div class="result-message">
-          相手の残り時間を入力して計算してください。
-        </div>
+        <p class="result-message">
+          残り時間を入力して計算してください。
+        </p>
 
       </div>
+
+
+      <!-- 出撃遅れ・加速計算 -->
+
+      <details class="acceleration-details">
+
+        <summary>
+          出撃が遅れた時の加速計算
+        </summary>
+
+        <div class="acceleration-content">
+
+          <p class="acceleration-help">
+            実際に行軍を出した時点でボタンを押すと、
+            25%・50%加速で目標着弾へ追いつけるか計算します。
+          </p>
+
+          <button
+            class="record-actual-departure-button"
+            type="button"
+          >
+            今、実際に出撃した
+          </button>
+
+
+          <div class="actual-departure-result">
+
+            <div class="result-line">
+              <span>実際の出撃</span>
+
+              <strong class="actual-departure-time">
+                未記録
+              </strong>
+            </div>
+
+            <div class="result-line">
+              <span>予定との差</span>
+
+              <strong class="departure-delay-result">
+                --
+              </strong>
+            </div>
+
+          </div>
+
+
+          <div class="acceleration-options">
+
+            <article class="acceleration-option no-boost-option">
+
+              <h4>加速なし</h4>
+
+              <strong class="no-boost-arrival">
+                --
+              </strong>
+
+              <p class="no-boost-status">
+                未計算
+              </p>
+
+            </article>
+
+
+            <article class="acceleration-option boost-25-option">
+
+              <h4>25%加速</h4>
+
+              <strong class="boost-25-arrival">
+                --
+              </strong>
+
+              <p class="boost-25-status">
+                未計算
+              </p>
+
+            </article>
+
+
+            <article class="acceleration-option boost-50-option">
+
+              <h4>50%加速</h4>
+
+              <strong class="boost-50-arrival">
+                --
+              </strong>
+
+              <p class="boost-50-status">
+                未計算
+              </p>
+
+            </article>
+
+          </div>
+
+
+          <div class="best-acceleration-result">
+
+            <span>おすすめ</span>
+
+            <strong class="best-acceleration-text">
+              出撃後に計算できます
+            </strong>
+
+          </div>
+
+        </div>
+
+      </details>
 
     </article>
 
   </template>
 
 
-  <script src="./script.js?v=3"></script>
+  <script src="./script.js?v=10"></script>
 
 </body>
 </html>
