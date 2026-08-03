@@ -1,7 +1,7 @@
 "use strict";
 
 /* =========================================================
-   WOS 行軍タイミングツール Ver.1.0
+   WOS 行軍タイミングツール Ver.2.0
 ========================================================= */
 
 
@@ -9,18 +9,16 @@
    基本設定
 ========================================================= */
 
-const STORAGE_KEY = "wos_march_timing_tool_v10";
+const STORAGE_KEY = "wos_march_timing_tool_v20";
 
 /*
-  座標から行軍時間を推定する式
+  実測データから作った座標→行軍時間の推定式
 
-  王城・砦・要塞：
-  実測値から
-  秒 ≒ 距離 × 4.279 + 1.71
+  王城・砦・要塞
+  時間 ≒ 距離 × 4.279 + 1.71
 
-  プレイヤー都市：
-  実測値から
-  秒 ≒ 距離 × 2.255 + 2.864
+  プレイヤー都市
+  時間 ≒ 距離 × 2.255 + 2.864
 */
 const COORDINATE_FORMULAS = {
   castle: {
@@ -38,16 +36,14 @@ const COORDINATE_FORMULAS = {
   }
 };
 
+
 /*
-  ユキヒョウ実測補正
+  ユキヒョウ補正
 
-  Lv1、Lv6、Lv8は実測値を優先。
-  その他のLvはその間を補間した推定値。
+  通常時間 ÷ 倍率 ＝ バフ適用後の時間
 
-  例：
-  通常431秒
-  Lv6 → 約359秒
-  431 ÷ 1.20 ≒ 359秒
+  Lv1・Lv6・Lv8は実測値を参考に設定。
+  その他は段階的な推定値。
 */
 const SNOW_LEOPARD_MULTIPLIERS = {
   0: 1,
@@ -69,6 +65,9 @@ const SNOW_LEOPARD_MULTIPLIERS = {
 const currentTimeElement =
   document.getElementById("currentTime");
 
+
+/* モード切り替え */
+
 const insertModeButton =
   document.getElementById("insertModeButton");
 
@@ -82,7 +81,19 @@ const arrivalModeSection =
   document.getElementById("arrivalModeSection");
 
 
-/* 行軍時間設定 */
+/* 防衛施設 */
+
+const defenseCoordinateXInput =
+  document.getElementById("defenseCoordinateX");
+
+const defenseCoordinateYInput =
+  document.getElementById("defenseCoordinateY");
+
+const defenseTargetTypeSelect =
+  document.getElementById("defenseTargetType");
+
+
+/* 自分の行軍時間 */
 
 const manualMarchModeButton =
   document.getElementById("manualMarchModeButton");
@@ -102,26 +113,11 @@ const myMarchMinutesInput =
 const myMarchSecondsInput =
   document.getElementById("myMarchSeconds");
 
-
-/* 座標 */
-
 const myCoordinateXInput =
   document.getElementById("myCoordinateX");
 
 const myCoordinateYInput =
   document.getElementById("myCoordinateY");
-
-const targetCoordinateXInput =
-  document.getElementById("targetCoordinateX");
-
-const targetCoordinateYInput =
-  document.getElementById("targetCoordinateY");
-
-const targetTypeSelect =
-  document.getElementById("targetType");
-
-const swapCoordinatesButton =
-  document.getElementById("swapCoordinatesButton");
 
 const estimatedMarchTimeElement =
   document.getElementById("estimatedMarchTime");
@@ -136,7 +132,7 @@ const applyEstimatedMarchButton =
   document.getElementById("applyEstimatedMarchButton");
 
 
-/* ユキヒョウ */
+/* 自分のユキヒョウ */
 
 const snowLeopardActiveInput =
   document.getElementById("snowLeopardActive");
@@ -160,7 +156,7 @@ const tapCorrectionInput =
   document.getElementById("tapCorrection");
 
 
-/* 差し込み */
+/* 集結カード */
 
 const addRallyButton =
   document.getElementById("addRallyButton");
@@ -248,7 +244,8 @@ const closeAlertButton =
 let currentAppMode = "insert";
 let currentMarchInputMode = "manual";
 
-let estimatedNormalMarchSeconds = null;
+let estimatedMyNormalMarchSeconds = null;
+
 let arrivalDepartureTimestamp = null;
 
 let cardIdCounter = 1;
@@ -258,7 +255,7 @@ let alertIsOpen = false;
 
 
 /* =========================================================
-   共通ユーティリティ
+   共通関数
 ========================================================= */
 
 function parseNumber(value) {
@@ -273,20 +270,12 @@ function parseNumber(value) {
     return null;
   }
 
-  const number =
+  const result =
     Number.parseFloat(normalizedValue);
 
-  return Number.isFinite(number)
-    ? number
+  return Number.isFinite(result)
+    ? result
     : null;
-}
-
-
-function clamp(value, minimum, maximum) {
-  return Math.min(
-    Math.max(value, minimum),
-    maximum
-  );
 }
 
 
@@ -300,7 +289,8 @@ function formatClock(timestamp) {
     return "--:--:--.-";
   }
 
-  const date = new Date(timestamp);
+  const date =
+    new Date(timestamp);
 
   const hours =
     String(date.getHours()).padStart(2, "0");
@@ -312,13 +302,18 @@ function formatClock(timestamp) {
     String(date.getSeconds()).padStart(2, "0");
 
   const tenths =
-    Math.floor(date.getMilliseconds() / 100);
+    Math.floor(
+      date.getMilliseconds() / 100
+    );
 
   return `${hours}:${minutes}:${seconds}.${tenths}`;
 }
 
 
-function formatDuration(seconds, showTenths = true) {
+function formatDuration(
+  seconds,
+  showTenths = true
+) {
   if (!Number.isFinite(seconds)) {
     return "--分--秒";
   }
@@ -326,21 +321,70 @@ function formatDuration(seconds, showTenths = true) {
   const safeSeconds =
     Math.max(0, seconds);
 
-  const wholeMinutes =
+  const minutes =
     Math.floor(safeSeconds / 60);
 
   const remainingSeconds =
-    safeSeconds - wholeMinutes * 60;
+    safeSeconds - minutes * 60;
 
-  const secondText = showTenths
-    ? remainingSeconds.toFixed(1)
-    : String(Math.round(remainingSeconds));
+  const secondText =
+    showTenths
+      ? remainingSeconds.toFixed(1)
+      : String(
+          Math.round(remainingSeconds)
+        );
 
-  if (wholeMinutes > 0) {
-    return `${wholeMinutes}分${secondText}秒`;
+  if (minutes > 0) {
+    return `${minutes}分${secondText}秒`;
   }
 
   return `${secondText}秒`;
+}
+
+
+function formatCountdown(milliseconds) {
+  if (!Number.isFinite(milliseconds)) {
+    return "未計算";
+  }
+
+  const seconds =
+    milliseconds / 1000;
+
+  if (
+    seconds <= 0 &&
+    seconds >= -1
+  ) {
+    return "今です！";
+  }
+
+  if (seconds < -1) {
+    const elapsed =
+      Math.abs(seconds);
+
+    if (elapsed >= 60) {
+      const minutes =
+        Math.floor(elapsed / 60);
+
+      const remaining =
+        elapsed - minutes * 60;
+
+      return `${minutes}分${remaining.toFixed(1)}秒経過`;
+    }
+
+    return `${elapsed.toFixed(1)}秒経過`;
+  }
+
+  if (seconds >= 60) {
+    const minutes =
+      Math.floor(seconds / 60);
+
+    const remaining =
+      seconds - minutes * 60;
+
+    return `${minutes}分${remaining.toFixed(1)}秒`;
+  }
+
+  return `${seconds.toFixed(1)}秒`;
 }
 
 
@@ -362,80 +406,41 @@ function formatSignedSeconds(seconds) {
 }
 
 
-function formatCountdown(milliseconds) {
-  if (!Number.isFinite(milliseconds)) {
-    return "未計算";
-  }
-
-  const seconds =
-    milliseconds / 1000;
-
-  if (seconds <= 0 && seconds >= -1) {
-    return "今です！";
-  }
-
-  if (seconds < -1) {
-    const elapsed =
-      Math.abs(seconds);
-
-    if (elapsed >= 60) {
-      const minutes =
-        Math.floor(elapsed / 60);
-
-      const remainder =
-        elapsed - minutes * 60;
-
-      return `${minutes}分${remainder.toFixed(1)}秒経過`;
-    }
-
-    return `${elapsed.toFixed(1)}秒経過`;
-  }
-
-  if (seconds >= 60) {
-    const minutes =
-      Math.floor(seconds / 60);
-
-    const remainder =
-      seconds - minutes * 60;
-
-    return `${minutes}分${remainder.toFixed(1)}秒`;
-  }
-
-  return `${seconds.toFixed(1)}秒`;
-}
-
-
 function getMinuteSecondValue(
   minutesInput,
   secondsInput
 ) {
-  const minutesValue =
+  const minutes =
     minutesInput.value.trim() === ""
       ? 0
-      : parseNumber(minutesInput.value);
+      : parseNumber(
+          minutesInput.value
+        );
 
-  const secondsValue =
+  const seconds =
     secondsInput.value.trim() === ""
       ? 0
-      : parseNumber(secondsInput.value);
+      : parseNumber(
+          secondsInput.value
+        );
 
   if (
-    !Number.isFinite(minutesValue) ||
-    !Number.isFinite(secondsValue)
+    !Number.isFinite(minutes) ||
+    !Number.isFinite(seconds)
   ) {
     return null;
   }
 
   if (
-    minutesValue < 0 ||
-    secondsValue < 0
+    minutes < 0 ||
+    seconds < 0
   ) {
     return null;
   }
 
   return (
-    Math.floor(minutesValue) * 60 +
-    secondsValue
+    Math.floor(minutes) * 60 +
+    seconds
   );
 }
 
@@ -466,9 +471,7 @@ function setMinuteSecondInputs(
     String(minutes);
 
   secondsInput.value =
-    seconds === 0
-      ? "0"
-      : String(seconds);
+    String(seconds);
 }
 
 
@@ -477,10 +480,14 @@ function normalizeMinuteSecondInputs(
   secondsInput
 ) {
   let minutes =
-    parseNumber(minutesInput.value);
+    parseNumber(
+      minutesInput.value
+    );
 
   let seconds =
-    parseNumber(secondsInput.value);
+    parseNumber(
+      secondsInput.value
+    );
 
   if (!Number.isFinite(minutes)) {
     minutes = 0;
@@ -491,24 +498,31 @@ function normalizeMinuteSecondInputs(
   }
 
   minutes =
-    Math.max(0, Math.floor(minutes));
+    Math.max(
+      0,
+      Math.floor(minutes)
+    );
 
   seconds =
     Math.max(0, seconds);
 
   if (seconds >= 60) {
-    const addedMinutes =
+    const extraMinutes =
       Math.floor(seconds / 60);
 
-    minutes += addedMinutes;
-    seconds -= addedMinutes * 60;
+    minutes += extraMinutes;
+
+    seconds -=
+      extraMinutes * 60;
   }
 
   minutesInput.value =
     String(minutes);
 
   secondsInput.value =
-    String(roundToTenths(seconds));
+    String(
+      roundToTenths(seconds)
+    );
 }
 
 
@@ -527,14 +541,17 @@ function sanitizeNumericInput(input) {
       ""
     );
 
-  const firstDecimalIndex =
+  const firstDecimal =
     value.indexOf(".");
 
-  if (firstDecimalIndex !== -1) {
+  if (firstDecimal !== -1) {
     value =
-      value.slice(0, firstDecimalIndex + 1) +
+      value.slice(
+        0,
+        firstDecimal + 1
+      ) +
       value
-        .slice(firstDecimalIndex + 1)
+        .slice(firstDecimal + 1)
         .replace(/\./g, "");
   }
 
@@ -546,7 +563,8 @@ function sanitizeNumericInput(input) {
       value.replace(/-/g, "");
 
     if (hasMinus) {
-      value = `-${value}`;
+      value =
+        `-${value}`;
     }
   }
 
@@ -566,11 +584,104 @@ function moveCursorToEnd(input) {
       );
     } catch (error) {
       /*
-        一部ブラウザで未対応でも
-        入力自体は継続する。
+        対応していないブラウザでは無視
       */
     }
   });
+}
+
+
+function calculateDistance(
+  startX,
+  startY,
+  targetX,
+  targetY
+) {
+  if (
+    !Number.isFinite(startX) ||
+    !Number.isFinite(startY) ||
+    !Number.isFinite(targetX) ||
+    !Number.isFinite(targetY)
+  ) {
+    return null;
+  }
+
+  const differenceX =
+    targetX - startX;
+
+  const differenceY =
+    targetY - startY;
+
+  return Math.sqrt(
+    differenceX ** 2 +
+    differenceY ** 2
+  );
+}
+
+
+function estimateNormalMarchSeconds(
+  distance,
+  targetType
+) {
+  if (!Number.isFinite(distance)) {
+    return null;
+  }
+
+  const formula =
+    COORDINATE_FORMULAS[
+      targetType === "city"
+        ? "city"
+        : "castle"
+    ];
+
+  const rawSeconds =
+    distance * formula.slope +
+    formula.intercept;
+
+  return Math.round(
+    Math.max(
+      formula.minimum,
+      rawSeconds
+    )
+  );
+}
+
+
+function getSnowLeopardMultiplier(
+  active,
+  level
+) {
+  if (!active) {
+    return 1;
+  }
+
+  return (
+    SNOW_LEOPARD_MULTIPLIERS[
+      Number(level)
+    ] ?? 1
+  );
+}
+
+
+function applySnowLeopardBuff(
+  normalSeconds,
+  active,
+  level
+) {
+  if (
+    !Number.isFinite(normalSeconds) ||
+    normalSeconds <= 0
+  ) {
+    return null;
+  }
+
+  const multiplier =
+    getSnowLeopardMultiplier(
+      active,
+      level
+    );
+
+  return normalSeconds / multiplier;
 }
 
 
@@ -580,7 +691,9 @@ function setResultMessage(
   className = ""
 ) {
   const messageElement =
-    card.querySelector(".result-message");
+    card.querySelector(
+      ".result-message"
+    );
 
   messageElement.textContent =
     message;
@@ -599,35 +712,37 @@ function setResultMessage(
 }
 
 
-/* =========================================================
-   現在時刻
-========================================================= */
-
-function updateCurrentClock() {
-  currentTimeElement.textContent =
-    formatClock(Date.now());
+function escapeHtml(text) {
+  return String(text)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
 }
 
 
 /* =========================================================
-   入力支援
+   入力補助
 ========================================================= */
 
-function initializeInputHelpers(root = document) {
-  const cursorEndInputs =
+function initializeInputHelpers(
+  root = document
+) {
+  const cursorInputs =
     root.querySelectorAll(
       ".cursor-end-input"
     );
 
-  cursorEndInputs.forEach((input) => {
+  cursorInputs.forEach((input) => {
     if (
-      input.dataset.cursorHelperReady ===
+      input.dataset.cursorReady ===
       "true"
     ) {
       return;
     }
 
-    input.dataset.cursorHelperReady =
+    input.dataset.cursorReady =
       "true";
 
     input.addEventListener(
@@ -652,13 +767,13 @@ function initializeInputHelpers(root = document) {
 
   numericInputs.forEach((input) => {
     if (
-      input.dataset.numericHelperReady ===
+      input.dataset.numericReady ===
       "true"
     ) {
       return;
     }
 
-    input.dataset.numericHelperReady =
+    input.dataset.numericReady =
       "true";
 
     input.addEventListener(
@@ -672,7 +787,17 @@ function initializeInputHelpers(root = document) {
 
 
 /* =========================================================
-   モード切替
+   時計
+========================================================= */
+
+function updateCurrentClock() {
+  currentTimeElement.textContent =
+    formatClock(Date.now());
+}
+
+
+/* =========================================================
+   表示モード
 ========================================================= */
 
 function setAppMode(mode) {
@@ -708,14 +833,15 @@ function setAppMode(mode) {
 }
 
 
-function setMarchInputMode(mode) {
+function setMyMarchInputMode(mode) {
   currentMarchInputMode =
     mode === "coordinate"
       ? "coordinate"
       : "manual";
 
   const manualActive =
-    currentMarchInputMode === "manual";
+    currentMarchInputMode ===
+    "manual";
 
   manualMarchModeButton.classList.toggle(
     "active",
@@ -737,123 +863,142 @@ function setMarchInputMode(mode) {
     manualActive
   );
 
-  updateMarchDisplays();
+  updateMyEstimatedMarch();
+  updateMyMarchDisplays();
   saveAllData();
 }
 
 
 /* =========================================================
-   座標計算
+   防衛施設
 ========================================================= */
 
-function calculateCoordinateDistance() {
-  const myX =
-    parseNumber(myCoordinateXInput.value);
+function getDefenseCoordinates() {
+  const x =
+    parseNumber(
+      defenseCoordinateXInput.value
+    );
 
-  const myY =
-    parseNumber(myCoordinateYInput.value);
-
-  const targetX =
-    parseNumber(targetCoordinateXInput.value);
-
-  const targetY =
-    parseNumber(targetCoordinateYInput.value);
+  const y =
+    parseNumber(
+      defenseCoordinateYInput.value
+    );
 
   if (
-    !Number.isFinite(myX) ||
-    !Number.isFinite(myY) ||
-    !Number.isFinite(targetX) ||
-    !Number.isFinite(targetY)
+    !Number.isFinite(x) ||
+    !Number.isFinite(y)
   ) {
     return null;
   }
 
-  const differenceX =
-    targetX - myX;
-
-  const differenceY =
-    targetY - myY;
-
-  return Math.sqrt(
-    differenceX ** 2 +
-    differenceY ** 2
-  );
+  return { x, y };
 }
 
 
-function calculateEstimatedMarchTime() {
-  const distance =
-    calculateCoordinateDistance();
+function updateAllCoordinateEstimates() {
+  updateMyEstimatedMarch();
 
-  if (!Number.isFinite(distance)) {
-    estimatedNormalMarchSeconds = null;
+  const cards =
+    rallyCardList.querySelectorAll(
+      ".rally-card"
+    );
 
-    estimatedDistanceElement.textContent =
-      "--";
+  cards.forEach((card) => {
+    updateEnemyCoordinateEstimate(card);
+  });
+}
+
+
+/* =========================================================
+   自分の座標計算
+========================================================= */
+
+function updateMyEstimatedMarch() {
+  const defense =
+    getDefenseCoordinates();
+
+  const myX =
+    parseNumber(
+      myCoordinateXInput.value
+    );
+
+  const myY =
+    parseNumber(
+      myCoordinateYInput.value
+    );
+
+  if (
+    !defense ||
+    !Number.isFinite(myX) ||
+    !Number.isFinite(myY)
+  ) {
+    estimatedMyNormalMarchSeconds =
+      null;
 
     estimatedMarchTimeElement.textContent =
       "未計算";
 
+    estimatedDistanceElement.textContent =
+      "--";
+
     estimatedErrorElement.textContent =
       "--";
 
-    updateMarchDisplays();
+    updateMyMarchDisplays();
+
     return null;
   }
 
+  const distance =
+    calculateDistance(
+      myX,
+      myY,
+      defense.x,
+      defense.y
+    );
+
   const targetType =
-    targetTypeSelect.value === "city"
+    defenseTargetTypeSelect.value ===
+    "city"
       ? "city"
       : "castle";
 
-  const formula =
-    COORDINATE_FORMULAS[targetType];
-
-  let estimatedSeconds =
-    distance * formula.slope +
-    formula.intercept;
-
-  estimatedSeconds =
-    Math.max(
-      formula.minimum,
-      estimatedSeconds
+  const normalSeconds =
+    estimateNormalMarchSeconds(
+      distance,
+      targetType
     );
 
-  /*
-    ゲーム表示は基本的に整数秒なので、
-    まず整数へ丸めて表示する。
-  */
-  estimatedSeconds =
-    Math.round(estimatedSeconds);
+  estimatedMyNormalMarchSeconds =
+    normalSeconds;
 
-  estimatedNormalMarchSeconds =
-    estimatedSeconds;
+  estimatedMarchTimeElement.textContent =
+    formatDuration(
+      normalSeconds,
+      false
+    );
 
   estimatedDistanceElement.textContent =
     `${distance.toFixed(2)}マス`;
 
-  estimatedMarchTimeElement.textContent =
-    formatDuration(
-      estimatedSeconds,
-      false
-    );
-
   estimatedErrorElement.textContent =
-    formula.errorText;
+    COORDINATE_FORMULAS[
+      targetType
+    ].errorText;
 
-  updateMarchDisplays();
+  updateMyMarchDisplays();
 
-  return estimatedSeconds;
+  return normalSeconds;
 }
 
 
-function applyEstimatedMarchTime() {
+function applyMyEstimatedMarch() {
   const estimatedSeconds =
-    calculateEstimatedMarchTime();
+    updateMyEstimatedMarch();
 
   if (!Number.isFinite(estimatedSeconds)) {
     window.alert(
-      "自分と目的地の座標を入力してください。"
+      "自分の座標と防衛施設の座標を入力してください。"
     );
 
     return;
@@ -865,46 +1010,23 @@ function applyEstimatedMarchTime() {
     myMarchSecondsInput
   );
 
-  setMarchInputMode("manual");
-  updateMarchDisplays();
-  saveAllData();
-}
+  setMyMarchInputMode("manual");
 
-
-function swapCoordinates() {
-  const myX =
-    myCoordinateXInput.value;
-
-  const myY =
-    myCoordinateYInput.value;
-
-  myCoordinateXInput.value =
-    targetCoordinateXInput.value;
-
-  myCoordinateYInput.value =
-    targetCoordinateYInput.value;
-
-  targetCoordinateXInput.value =
-    myX;
-
-  targetCoordinateYInput.value =
-    myY;
-
-  calculateEstimatedMarchTime();
+  updateMyMarchDisplays();
   saveAllData();
 }
 
 
 /* =========================================================
-   行軍時間・ユキヒョウ
+   自分の行軍時間
 ========================================================= */
 
-function getNormalMarchSeconds() {
+function getMyNormalMarchSeconds() {
   if (
     currentMarchInputMode ===
     "coordinate"
   ) {
-    return calculateEstimatedMarchTime();
+    return updateMyEstimatedMarch();
   }
 
   return getMinuteSecondValue(
@@ -914,43 +1036,19 @@ function getNormalMarchSeconds() {
 }
 
 
-function getSnowLeopardMultiplier() {
-  if (!snowLeopardActiveInput.checked) {
-    return 1;
-  }
+function getMyEffectiveMarchSeconds() {
+  const normalSeconds =
+    getMyNormalMarchSeconds();
 
-  const level =
-    Number.parseInt(
-      snowLeopardLevelSelect.value,
-      10
-    );
-
-  return (
-    SNOW_LEOPARD_MULTIPLIERS[level] ??
-    1
+  return applySnowLeopardBuff(
+    normalSeconds,
+    snowLeopardActiveInput.checked,
+    snowLeopardLevelSelect.value
   );
 }
 
 
-function getEffectiveMarchSeconds() {
-  const normalSeconds =
-    getNormalMarchSeconds();
-
-  if (
-    !Number.isFinite(normalSeconds) ||
-    normalSeconds <= 0
-  ) {
-    return null;
-  }
-
-  const multiplier =
-    getSnowLeopardMultiplier();
-
-  return normalSeconds / multiplier;
-}
-
-
-function updateMarchDisplays() {
+function updateMyMarchDisplays() {
   let normalSeconds;
 
   if (
@@ -958,7 +1056,7 @@ function updateMarchDisplays() {
     "coordinate"
   ) {
     normalSeconds =
-      estimatedNormalMarchSeconds;
+      estimatedMyNormalMarchSeconds;
   } else {
     normalSeconds =
       getMinuteSecondValue(
@@ -980,11 +1078,12 @@ function updateMarchDisplays() {
     return;
   }
 
-  const multiplier =
-    getSnowLeopardMultiplier();
-
   const buffedSeconds =
-    normalSeconds / multiplier;
+    applySnowLeopardBuff(
+      normalSeconds,
+      snowLeopardActiveInput.checked,
+      snowLeopardLevelSelect.value
+    );
 
   normalMarchTimeDisplay.textContent =
     formatDuration(normalSeconds);
@@ -994,25 +1093,26 @@ function updateMarchDisplays() {
 }
 
 
-function updateSnowLeopardControls() {
+function updateMySnowLeopardControls() {
   snowLeopardLevelSelect.disabled =
     !snowLeopardActiveInput.checked;
 
   if (
     snowLeopardActiveInput.checked &&
-    snowLeopardLevelSelect.value === "0"
+    snowLeopardLevelSelect.value ===
+      "0"
   ) {
     snowLeopardLevelSelect.value =
       "1";
   }
 
-  updateMarchDisplays();
+  updateMyMarchDisplays();
   saveAllData();
 }
 
 
 /* =========================================================
-   音・バイブ
+   音・振動
 ========================================================= */
 
 function prepareAudio() {
@@ -1030,14 +1130,12 @@ function prepareAudio() {
   }
 
   if (
-    audioContext.state === "suspended"
+    audioContext.state ===
+    "suspended"
   ) {
-    audioContext.resume().catch(() => {
-      /*
-        音が鳴らなくても
-        計算処理は継続する。
-      */
-    });
+    audioContext.resume().catch(
+      () => {}
+    );
   }
 }
 
@@ -1067,7 +1165,8 @@ function playNotificationSound() {
         audioContext.createGain();
 
       const beepStart =
-        startTime + index * 0.22;
+        startTime +
+        index * 0.22;
 
       const beepEnd =
         beepStart + 0.16;
@@ -1095,12 +1194,16 @@ function playNotificationSound() {
       );
 
       oscillator.connect(gainNode);
+
       gainNode.connect(
         audioContext.destination
       );
 
       oscillator.start(beepStart);
-      oscillator.stop(beepEnd + 0.02);
+
+      oscillator.stop(
+        beepEnd + 0.02
+      );
     }
   );
 }
@@ -1120,7 +1223,7 @@ function vibrateDevice() {
 
 
 /* =========================================================
-   通知画面
+   通知
 ========================================================= */
 
 function showDepartureAlert(
@@ -1137,9 +1240,13 @@ function showDepartureAlert(
     rallyName || "集結主";
 
   alertTime.textContent =
-    formatClock(departureTimestamp);
+    formatClock(
+      departureTimestamp
+    );
 
-  alertOverlay.classList.add("show");
+  alertOverlay.classList.add(
+    "show"
+  );
 
   alertOverlay.setAttribute(
     "aria-hidden",
@@ -1154,7 +1261,9 @@ function showDepartureAlert(
 function closeDepartureAlert() {
   alertIsOpen = false;
 
-  alertOverlay.classList.remove("show");
+  alertOverlay.classList.remove(
+    "show"
+  );
 
   alertOverlay.setAttribute(
     "aria-hidden",
@@ -1171,53 +1280,103 @@ function closeDepartureAlert() {
    集結カード作成
 ========================================================= */
 
-function createRallyCard(savedData = null) {
+function createRallyCard(
+  savedData = null
+) {
   const fragment =
-    rallyCardTemplate.content.cloneNode(true);
+    rallyCardTemplate.content.cloneNode(
+      true
+    );
 
   const card =
-    fragment.querySelector(".rally-card");
+    fragment.querySelector(
+      ".rally-card"
+    );
 
   card.dataset.cardId =
     String(cardIdCounter);
 
   cardIdCounter += 1;
 
-  resetCardDatasets(card);
+  resetRallyCardDatasets(card);
 
-  rallyCardList.appendChild(fragment);
+  rallyCardList.appendChild(
+    fragment
+  );
 
   const addedCard =
     rallyCardList.lastElementChild;
 
-  setupRallyCardEvents(addedCard);
+  setupRallyCardEvents(
+    addedCard
+  );
 
   if (savedData) {
-    applySavedCardData(
+    applySavedRallyCardData(
       addedCard,
       savedData
     );
   }
 
-  initializeInputHelpers(addedCard);
+  initializeInputHelpers(
+    addedCard
+  );
+
   updateRallyCardNumbers();
-  updateCardModeDisplay(addedCard);
+  updateRallyCardModeDisplay(
+    addedCard
+  );
+
+  updateEnemyMarchModeDisplay(
+    addedCard
+  );
+
+  updateEnemyCoordinateEstimate(
+    addedCard
+  );
 
   return addedCard;
 }
 
 
-function resetCardDatasets(card) {
+function resetRallyCardDatasets(card) {
   card.dataset.cardMode = "rally";
-  card.dataset.capturedTimestamp = "";
-  card.dataset.enemyDeparture = "";
-  card.dataset.enemyArrival = "";
-  card.dataset.myDeparture = "";
-  card.dataset.myArrival = "";
-  card.dataset.actualDeparture = "";
-  card.dataset.alerted = "false";
+
+  card.dataset.enemyMarchMode =
+    "manual";
+
+  card.dataset.enemyEstimatedNormal =
+    "";
+
+  card.dataset.enemyEstimatedEffective =
+    "";
+
+  card.dataset.capturedTimestamp =
+    "";
+
+  card.dataset.enemyDeparture =
+    "";
+
+  card.dataset.enemyArrival =
+    "";
+
+  card.dataset.myDeparture =
+    "";
+
+  card.dataset.myArrival =
+    "";
+
+  card.dataset.actualDeparture =
+    "";
+
+  card.dataset.alerted =
+    "false";
 }
 
+
+/* =========================================================
+   集結カードイベント
+========================================================= */
 
 function setupRallyCardEvents(card) {
   const deleteButton =
@@ -1225,9 +1384,14 @@ function setupRallyCardEvents(card) {
       ".delete-rally-button"
     );
 
-  const modeButtons =
+  const enemyMarchModeButtons =
     card.querySelectorAll(
-      ".card-mode-button"
+      "[data-enemy-march-mode]"
+    );
+
+  const cardModeButtons =
+    card.querySelectorAll(
+      "[data-card-mode]"
     );
 
   const calculateButton =
@@ -1240,25 +1404,51 @@ function setupRallyCardEvents(card) {
       ".record-actual-departure-button"
     );
 
-  const enemyMinutesInput =
+  const applyEnemyEstimateButton =
+    card.querySelector(
+      ".apply-enemy-estimated-button"
+    );
+
+  const enemySnowActive =
+    card.querySelector(
+      ".enemy-snow-leopard-active"
+    );
+
+  const enemySnowLevel =
+    card.querySelector(
+      ".enemy-snow-leopard-level"
+    );
+
+  const enemyCoordinateX =
+    card.querySelector(
+      ".enemy-coordinate-x"
+    );
+
+  const enemyCoordinateY =
+    card.querySelector(
+      ".enemy-coordinate-y"
+    );
+
+  const enemyMinutes =
     card.querySelector(
       ".enemy-march-minutes-input"
     );
 
-  const enemySecondsInput =
+  const enemySeconds =
     card.querySelector(
       ".enemy-march-seconds-input"
     );
 
-  const remainingMinutesInput =
+  const remainingMinutes =
     card.querySelector(
       ".remaining-minutes-input"
     );
 
-  const remainingSecondsInput =
+  const remainingSeconds =
     card.querySelector(
       ".remaining-seconds-input"
     );
+
 
   deleteButton.addEventListener(
     "click",
@@ -1283,19 +1473,114 @@ function setupRallyCardEvents(card) {
     }
   );
 
-  modeButtons.forEach((button) => {
-    button.addEventListener(
-      "click",
-      () => {
-        card.dataset.cardMode =
-          button.dataset.cardMode;
 
-        updateCardModeDisplay(card);
-        clearRallyCardResult(card);
+  enemyMarchModeButtons.forEach(
+    (button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          card.dataset.enemyMarchMode =
+            button.dataset.enemyMarchMode;
+
+          updateEnemyMarchModeDisplay(
+            card
+          );
+
+          clearRallyCardResult(card);
+
+          updateEnemyCoordinateEstimate(
+            card
+          );
+
+          saveAllData();
+        }
+      );
+    }
+  );
+
+
+  cardModeButtons.forEach(
+    (button) => {
+      button.addEventListener(
+        "click",
+        () => {
+          card.dataset.cardMode =
+            button.dataset.cardMode;
+
+          updateRallyCardModeDisplay(
+            card
+          );
+
+          clearRallyCardResult(card);
+          saveAllData();
+        }
+      );
+    }
+  );
+
+
+  enemySnowActive.addEventListener(
+    "change",
+    () => {
+      enemySnowLevel.disabled =
+        !enemySnowActive.checked;
+
+      if (
+        enemySnowActive.checked &&
+        enemySnowLevel.value ===
+          "0"
+      ) {
+        enemySnowLevel.value =
+          "1";
+      }
+
+      updateEnemyCoordinateEstimate(
+        card
+      );
+
+      saveAllData();
+    }
+  );
+
+
+  enemySnowLevel.addEventListener(
+    "change",
+    () => {
+      updateEnemyCoordinateEstimate(
+        card
+      );
+
+      saveAllData();
+    }
+  );
+
+
+  [
+    enemyCoordinateX,
+    enemyCoordinateY
+  ].forEach((input) => {
+    input.addEventListener(
+      "input",
+      () => {
+        updateEnemyCoordinateEstimate(
+          card
+        );
+
         saveAllData();
       }
     );
   });
+
+
+  applyEnemyEstimateButton.addEventListener(
+    "click",
+    () => {
+      applyEnemyEstimatedMarch(
+        card
+      );
+    }
+  );
+
 
   calculateButton.addEventListener(
     "click",
@@ -1303,18 +1588,19 @@ function setupRallyCardEvents(card) {
       prepareAudio();
 
       normalizeMinuteSecondInputs(
-        enemyMinutesInput,
-        enemySecondsInput
+        enemyMinutes,
+        enemySeconds
       );
 
       normalizeMinuteSecondInputs(
-        remainingMinutesInput,
-        remainingSecondsInput
+        remainingMinutes,
+        remainingSeconds
       );
 
       calculateRallyCard(card);
     }
   );
+
 
   actualDepartureButton.addEventListener(
     "click",
@@ -1323,18 +1609,19 @@ function setupRallyCardEvents(card) {
     }
   );
 
+
   const saveInputs =
     card.querySelectorAll(
-      "input"
+      "input, select"
     );
 
-  saveInputs.forEach((input) => {
-    input.addEventListener(
+  saveInputs.forEach((element) => {
+    element.addEventListener(
       "input",
       saveAllData
     );
 
-    input.addEventListener(
+    element.addEventListener(
       "change",
       saveAllData
     );
@@ -1342,36 +1629,255 @@ function setupRallyCardEvents(card) {
 }
 
 
-function updateRallyCardNumbers() {
-  const cards =
-    rallyCardList.querySelectorAll(
-      ".rally-card"
-    );
+/* =========================================================
+   相手の行軍時間設定
+========================================================= */
 
-  cards.forEach((card, index) => {
-    card.querySelector(
-      ".rally-card-number"
-    ).textContent =
-      String(index + 1);
-  });
-}
-
-
-function updateCardModeDisplay(card) {
+function updateEnemyMarchModeDisplay(
+  card
+) {
   const mode =
-    card.dataset.cardMode === "march"
-      ? "march"
-      : "rally";
+    card.dataset.enemyMarchMode ===
+    "coordinate"
+      ? "coordinate"
+      : "manual";
 
   const buttons =
     card.querySelectorAll(
-      ".card-mode-button"
+      "[data-enemy-march-mode]"
     );
 
   buttons.forEach((button) => {
     button.classList.toggle(
       "active",
-      button.dataset.cardMode === mode
+      button.dataset.enemyMarchMode ===
+        mode
+    );
+  });
+
+  const manualSettings =
+    card.querySelector(
+      ".enemy-manual-settings"
+    );
+
+  const coordinateSettings =
+    card.querySelector(
+      ".enemy-coordinate-settings"
+    );
+
+  manualSettings.classList.toggle(
+    "hidden",
+    mode !== "manual"
+  );
+
+  coordinateSettings.classList.toggle(
+    "hidden",
+    mode !== "coordinate"
+  );
+}
+
+
+function updateEnemyCoordinateEstimate(
+  card
+) {
+  const defense =
+    getDefenseCoordinates();
+
+  const enemyX =
+    parseNumber(
+      card.querySelector(
+        ".enemy-coordinate-x"
+      ).value
+    );
+
+  const enemyY =
+    parseNumber(
+      card.querySelector(
+        ".enemy-coordinate-y"
+      ).value
+    );
+
+  const estimatedTimeElement =
+    card.querySelector(
+      ".enemy-estimated-march-time"
+    );
+
+  const distanceElement =
+    card.querySelector(
+      ".enemy-estimated-distance"
+    );
+
+  const normalTimeElement =
+    card.querySelector(
+      ".enemy-normal-estimated-time"
+    );
+
+  if (
+    !defense ||
+    !Number.isFinite(enemyX) ||
+    !Number.isFinite(enemyY)
+  ) {
+    card.dataset.enemyEstimatedNormal =
+      "";
+
+    card.dataset.enemyEstimatedEffective =
+      "";
+
+    estimatedTimeElement.textContent =
+      "未計算";
+
+    distanceElement.textContent =
+      "--";
+
+    normalTimeElement.textContent =
+      "--";
+
+    return null;
+  }
+
+  const distance =
+    calculateDistance(
+      enemyX,
+      enemyY,
+      defense.x,
+      defense.y
+    );
+
+  const targetType =
+    defenseTargetTypeSelect.value ===
+    "city"
+      ? "city"
+      : "castle";
+
+  const normalSeconds =
+    estimateNormalMarchSeconds(
+      distance,
+      targetType
+    );
+
+  const enemySnowActive =
+    card.querySelector(
+      ".enemy-snow-leopard-active"
+    ).checked;
+
+  const enemySnowLevel =
+    card.querySelector(
+      ".enemy-snow-leopard-level"
+    ).value;
+
+  const effectiveSeconds =
+    applySnowLeopardBuff(
+      normalSeconds,
+      enemySnowActive,
+      enemySnowLevel
+    );
+
+  card.dataset.enemyEstimatedNormal =
+    String(normalSeconds);
+
+  card.dataset.enemyEstimatedEffective =
+    String(effectiveSeconds);
+
+  estimatedTimeElement.textContent =
+    formatDuration(
+      effectiveSeconds,
+      true
+    );
+
+  distanceElement.textContent =
+    `${distance.toFixed(2)}マス`;
+
+  normalTimeElement.textContent =
+    formatDuration(
+      normalSeconds,
+      false
+    );
+
+  return effectiveSeconds;
+}
+
+
+function applyEnemyEstimatedMarch(
+  card
+) {
+  const effectiveSeconds =
+    updateEnemyCoordinateEstimate(
+      card
+    );
+
+  if (!Number.isFinite(effectiveSeconds)) {
+    window.alert(
+      "相手の座標と防衛施設の座標を入力してください。"
+    );
+
+    return;
+  }
+
+  setMinuteSecondInputs(
+    effectiveSeconds,
+    card.querySelector(
+      ".enemy-march-minutes-input"
+    ),
+    card.querySelector(
+      ".enemy-march-seconds-input"
+    )
+  );
+
+  card.dataset.enemyMarchMode =
+    "manual";
+
+  updateEnemyMarchModeDisplay(
+    card
+  );
+
+  saveAllData();
+}
+
+
+function getEnemyMarchSeconds(card) {
+  if (
+    card.dataset.enemyMarchMode ===
+    "coordinate"
+  ) {
+    return updateEnemyCoordinateEstimate(
+      card
+    );
+  }
+
+  return getMinuteSecondValue(
+    card.querySelector(
+      ".enemy-march-minutes-input"
+    ),
+    card.querySelector(
+      ".enemy-march-seconds-input"
+    )
+  );
+}
+
+
+/* =========================================================
+   集結中・行軍中切り替え
+========================================================= */
+
+function updateRallyCardModeDisplay(
+  card
+) {
+  const mode =
+    card.dataset.cardMode ===
+    "march"
+      ? "march"
+      : "rally";
+
+  const buttons =
+    card.querySelectorAll(
+      "[data-card-mode]"
+    );
+
+  buttons.forEach((button) => {
+    button.classList.toggle(
+      "active",
+      button.dataset.cardMode ===
+        mode
     );
   });
 
@@ -1401,13 +1907,28 @@ function updateCardModeDisplay(card) {
 }
 
 
+function updateRallyCardNumbers() {
+  const cards =
+    rallyCardList.querySelectorAll(
+      ".rally-card"
+    );
+
+  cards.forEach((card, index) => {
+    card.querySelector(
+      ".rally-card-number"
+    ).textContent =
+      String(index + 1);
+  });
+}
+
+
 /* =========================================================
-   集結カード計算
+   差し込み計算
 ========================================================= */
 
 function calculateRallyCard(card) {
   const myMarchSeconds =
-    getEffectiveMarchSeconds();
+    getMyEffectiveMarchSeconds();
 
   if (
     !Number.isFinite(myMarchSeconds) ||
@@ -1423,14 +1944,7 @@ function calculateRallyCard(card) {
   }
 
   const enemyMarchSeconds =
-    getMinuteSecondValue(
-      card.querySelector(
-        ".enemy-march-minutes-input"
-      ),
-      card.querySelector(
-        ".enemy-march-seconds-input"
-      )
-    );
+    getEnemyMarchSeconds(card);
 
   if (
     !Number.isFinite(enemyMarchSeconds) ||
@@ -1491,9 +2005,7 @@ function calculateRallyCard(card) {
     return;
   }
 
-  if (
-    !Number.isFinite(tapCorrection)
-  ) {
+  if (!Number.isFinite(tapCorrection)) {
     setResultMessage(
       card,
       "タップ・通信補正を入力してください。",
@@ -1510,7 +2022,8 @@ function calculateRallyCard(card) {
   let enemyArrivalTimestamp;
 
   if (
-    card.dataset.cardMode === "march"
+    card.dataset.cardMode ===
+    "march"
   ) {
     enemyArrivalTimestamp =
       capturedTimestamp +
@@ -1553,8 +2066,11 @@ function calculateRallyCard(card) {
   card.dataset.myArrival =
     String(myArrivalTimestamp);
 
-  card.dataset.actualDeparture = "";
-  card.dataset.alerted = "false";
+  card.dataset.actualDeparture =
+    "";
+
+  card.dataset.alerted =
+    "false";
 
   card.classList.remove(
     "card-ready",
@@ -1562,7 +2078,9 @@ function calculateRallyCard(card) {
   );
 
   displayRallyCardResult(card);
+
   clearAccelerationResult(card);
+
   updateCardCountdown(card);
 
   saveAllData();
@@ -1637,32 +2155,40 @@ function updateAllCountdowns() {
 
 function updateCardCountdown(card) {
   if (
-    card.dataset.myDeparture === ""
+    card.dataset.myDeparture ===
+    ""
   ) {
     return;
   }
 
   const departureTimestamp =
-    Number(card.dataset.myDeparture);
+    Number(
+      card.dataset.myDeparture
+    );
 
-  if (!Number.isFinite(departureTimestamp)) {
+  if (
+    !Number.isFinite(
+      departureTimestamp
+    )
+  ) {
     return;
   }
 
   const remainingMilliseconds =
-    departureTimestamp - Date.now();
+    departureTimestamp -
+    Date.now();
 
-  const countdownElement =
-    card.querySelector(
-      ".countdown-result"
-    );
-
-  countdownElement.textContent =
+  card.querySelector(
+    ".countdown-result"
+  ).textContent =
     formatCountdown(
       remainingMilliseconds
     );
 
-  if (remainingMilliseconds < -3000) {
+  if (
+    remainingMilliseconds <
+    -3000
+  ) {
     card.classList.remove(
       "card-ready"
     );
@@ -1680,7 +2206,9 @@ function updateCardCountdown(card) {
     return;
   }
 
-  if (remainingMilliseconds <= 0) {
+  if (
+    remainingMilliseconds <= 0
+  ) {
     card.classList.remove(
       "card-ready"
     );
@@ -1696,7 +2224,8 @@ function updateCardCountdown(card) {
     );
 
     if (
-      card.dataset.alerted !== "true"
+      card.dataset.alerted !==
+      "true"
     ) {
       card.dataset.alerted =
         "true";
@@ -1715,7 +2244,10 @@ function updateCardCountdown(card) {
     return;
   }
 
-  if (remainingMilliseconds <= 5000) {
+  if (
+    remainingMilliseconds <=
+    5000
+  ) {
     card.classList.add(
       "card-ready"
     );
@@ -1739,7 +2271,9 @@ function updateCardCountdown(card) {
   );
 
   const enemyDepartureTimestamp =
-    Number(card.dataset.enemyDeparture);
+    Number(
+      card.dataset.enemyDeparture
+    );
 
   if (
     departureTimestamp <
@@ -1765,26 +2299,28 @@ function updateCardCountdown(card) {
 
 function recordActualDeparture(card) {
   if (
-    card.dataset.myArrival === ""
+    card.dataset.myArrival ===
+    ""
   ) {
     window.alert(
-      "先に通常の差し込み計算をしてください。"
+      "先に差し込み計算をしてください。"
     );
 
     return;
   }
 
-  const actualDepartureTimestamp =
-    Date.now();
-
   card.dataset.actualDeparture =
-    String(actualDepartureTimestamp);
+    String(Date.now());
 
-  calculateAccelerationOptions(card);
+  calculateAccelerationOptions(
+    card
+  );
 }
 
 
-function calculateAccelerationOptions(card) {
+function calculateAccelerationOptions(
+  card
+) {
   const actualDepartureTimestamp =
     Number(
       card.dataset.actualDeparture
@@ -1801,12 +2337,18 @@ function calculateAccelerationOptions(card) {
     );
 
   const marchSeconds =
-    getEffectiveMarchSeconds();
+    getMyEffectiveMarchSeconds();
 
   if (
-    !Number.isFinite(actualDepartureTimestamp) ||
-    !Number.isFinite(targetArrivalTimestamp) ||
-    !Number.isFinite(marchSeconds)
+    !Number.isFinite(
+      actualDepartureTimestamp
+    ) ||
+    !Number.isFinite(
+      targetArrivalTimestamp
+    ) ||
+    !Number.isFinite(
+      marchSeconds
+    )
   ) {
     return;
   }
@@ -1831,21 +2373,8 @@ function calculateAccelerationOptions(card) {
       delaySeconds
     );
 
-  /*
-    25%加速：
-    残り行軍時間を25%短縮
-    → 所要時間75%
-
-    50%加速：
-    残り行軍時間を50%短縮
-    → 所要時間50%
-
-    この計算では実際に出撃した直後に
-    加速を使用する前提。
-  */
   const options = [
     {
-      key: "none",
       label: "加速なし",
       durationRate: 1,
       optionElement:
@@ -1861,8 +2390,8 @@ function calculateAccelerationOptions(card) {
           ".no-boost-status"
         )
     },
+
     {
-      key: "25",
       label: "25%加速",
       durationRate: 0.75,
       optionElement:
@@ -1878,8 +2407,8 @@ function calculateAccelerationOptions(card) {
           ".boost-25-status"
         )
     },
+
     {
-      key: "50",
       label: "50%加速",
       durationRate: 0.5,
       optionElement:
@@ -1897,7 +2426,7 @@ function calculateAccelerationOptions(card) {
     }
   ];
 
-  const calculatedOptions =
+  const results =
     options.map((option) => {
       const arrivalTimestamp =
         actualDepartureTimestamp +
@@ -1917,58 +2446,60 @@ function calculateAccelerationOptions(card) {
       option.differenceSeconds =
         differenceSeconds;
 
-      displayAccelerationOption(option);
+      displayAccelerationOption(
+        option
+      );
 
       return option;
     });
 
   const bestOption =
-    calculatedOptions.reduce(
+    results.reduce(
       (best, current) => {
         if (!best) {
           return current;
         }
 
-        const currentDifference =
+        return (
           Math.abs(
             current.differenceSeconds
-          );
-
-        const bestDifference =
+          ) <
           Math.abs(
             best.differenceSeconds
-          );
-
-        return currentDifference <
-          bestDifference
-          ? current
-          : best;
+          )
+            ? current
+            : best
+        );
       },
       null
     );
 
-  const bestTextElement =
+  const bestText =
     card.querySelector(
       ".best-acceleration-text"
     );
 
   if (!bestOption) {
-    bestTextElement.textContent =
+    bestText.textContent =
       "判定できません";
+
     return;
   }
 
   const difference =
     bestOption.differenceSeconds;
 
-  if (Math.abs(difference) <= 0.5) {
-    bestTextElement.textContent =
-      `${bestOption.label}が最適（ほぼ目標着弾）`;
+  if (
+    Math.abs(difference) <=
+    0.5
+  ) {
+    bestText.textContent =
+      `${bestOption.label}が最適（ほぼ目標どおり）`;
   } else if (difference > 0) {
-    bestTextElement.textContent =
+    bestText.textContent =
       `${bestOption.label}が最適（${difference.toFixed(1)}秒遅れ）`;
   } else {
-    bestTextElement.textContent =
+    bestText.textContent =
       `${bestOption.label}が最適（${Math.abs(difference).toFixed(1)}秒早い）`;
   }
 
@@ -1976,7 +2507,9 @@ function calculateAccelerationOptions(card) {
 }
 
 
-function displayAccelerationOption(option) {
+function displayAccelerationOption(
+  option
+) {
   option.optionElement.classList.remove(
     "success",
     "warning",
@@ -1991,7 +2524,10 @@ function displayAccelerationOption(option) {
   const difference =
     option.differenceSeconds;
 
-  if (Math.abs(difference) <= 0.5) {
+  if (
+    Math.abs(difference) <=
+    0.5
+  ) {
     option.statusElement.textContent =
       "ほぼ目標どおり";
 
@@ -2026,8 +2562,11 @@ function displayAccelerationOption(option) {
 }
 
 
-function clearAccelerationResult(card) {
-  card.dataset.actualDeparture = "";
+function clearAccelerationResult(
+  card
+) {
+  card.dataset.actualDeparture =
+    "";
 
   card.querySelector(
     ".actual-departure-time"
@@ -2039,52 +2578,48 @@ function clearAccelerationResult(card) {
   ).textContent =
     "--";
 
-  const optionSelectors = [
-    [
-      ".no-boost-option",
-      ".no-boost-arrival",
-      ".no-boost-status"
-    ],
-    [
-      ".boost-25-option",
-      ".boost-25-arrival",
-      ".boost-25-status"
-    ],
-    [
-      ".boost-50-option",
-      ".boost-50-arrival",
-      ".boost-50-status"
-    ]
+  const settings = [
+    {
+      option: ".no-boost-option",
+      arrival: ".no-boost-arrival",
+      status: ".no-boost-status"
+    },
+
+    {
+      option: ".boost-25-option",
+      arrival: ".boost-25-arrival",
+      status: ".boost-25-status"
+    },
+
+    {
+      option: ".boost-50-option",
+      arrival: ".boost-50-arrival",
+      status: ".boost-50-status"
+    }
   ];
 
-  optionSelectors.forEach(
-    ([
-      optionSelector,
-      arrivalSelector,
-      statusSelector
-    ]) => {
-      const optionElement =
-        card.querySelector(
-          optionSelector
-        );
-
-      optionElement.classList.remove(
-        "success",
-        "warning",
-        "danger"
+  settings.forEach((setting) => {
+    const optionElement =
+      card.querySelector(
+        setting.option
       );
 
-      card.querySelector(
-        arrivalSelector
-      ).textContent =
-        "--";
+    optionElement.classList.remove(
+      "success",
+      "warning",
+      "danger"
+    );
 
-      card.querySelector(
-        statusSelector
-      ).textContent =
-        "未計算";
-    }
-  );
+    card.querySelector(
+      setting.arrival
+    ).textContent =
+      "--";
+
+    card.querySelector(
+      setting.status
+    ).textContent =
+      "未計算";
+  });
 
   card.querySelector(
     ".best-acceleration-text"
@@ -2094,47 +2629,48 @@ function clearAccelerationResult(card) {
 
 
 /* =========================================================
-   カードクリア
+   クリア
 ========================================================= */
 
 function clearRallyCardResult(card) {
-  card.dataset.capturedTimestamp = "";
-  card.dataset.enemyDeparture = "";
-  card.dataset.enemyArrival = "";
-  card.dataset.myDeparture = "";
-  card.dataset.myArrival = "";
-  card.dataset.actualDeparture = "";
-  card.dataset.alerted = "false";
+  card.dataset.capturedTimestamp =
+    "";
+
+  card.dataset.enemyDeparture =
+    "";
+
+  card.dataset.enemyArrival =
+    "";
+
+  card.dataset.myDeparture =
+    "";
+
+  card.dataset.myArrival =
+    "";
+
+  card.dataset.actualDeparture =
+    "";
+
+  card.dataset.alerted =
+    "false";
 
   card.classList.remove(
     "card-ready",
     "card-fired"
   );
 
-  card.querySelector(
-    ".captured-time-result"
-  ).textContent =
-    "--:--:--.-";
-
-  card.querySelector(
-    ".enemy-departure-result"
-  ).textContent =
-    "--:--:--.-";
-
-  card.querySelector(
-    ".enemy-arrival-result"
-  ).textContent =
-    "--:--:--.-";
-
-  card.querySelector(
-    ".my-departure-result"
-  ).textContent =
-    "--:--:--.-";
-
-  card.querySelector(
+  [
+    ".captured-time-result",
+    ".enemy-departure-result",
+    ".enemy-arrival-result",
+    ".my-departure-result",
     ".my-arrival-result"
-  ).textContent =
-    "--:--:--.-";
+  ].forEach((selector) => {
+    card.querySelector(
+      selector
+    ).textContent =
+      "--:--:--.-";
+  });
 
   card.querySelector(
     ".countdown-result"
@@ -2164,6 +2700,26 @@ function clearRallyCardInputs(card) {
   ).value = "";
 
   card.querySelector(
+    ".enemy-coordinate-x"
+  ).value = "";
+
+  card.querySelector(
+    ".enemy-coordinate-y"
+  ).value = "";
+
+  card.querySelector(
+    ".enemy-snow-leopard-active"
+  ).checked = false;
+
+  card.querySelector(
+    ".enemy-snow-leopard-level"
+  ).value = "0";
+
+  card.querySelector(
+    ".enemy-snow-leopard-level"
+  ).disabled = true;
+
+  card.querySelector(
     ".remaining-minutes-input"
   ).value = "0";
 
@@ -2171,9 +2727,23 @@ function clearRallyCardInputs(card) {
     ".remaining-seconds-input"
   ).value = "";
 
-  card.dataset.cardMode = "rally";
+  card.dataset.cardMode =
+    "rally";
 
-  updateCardModeDisplay(card);
+  card.dataset.enemyMarchMode =
+    "manual";
+
+  updateRallyCardModeDisplay(
+    card
+  );
+
+  updateEnemyMarchModeDisplay(
+    card
+  );
+
+  updateEnemyCoordinateEstimate(
+    card
+  );
 }
 
 
@@ -2191,7 +2761,7 @@ function clearAllRallyResults() {
     "empty-result";
 
   gapAnalysisResult.textContent =
-    "2人以上の相手を計算すると、着弾間隔を分析できます。";
+    "2人以上の相手を計算すると着弾間隔を分析できます。";
 
   saveAllData();
 }
@@ -2221,11 +2791,13 @@ function sortCardsByArrival() {
       );
 
     const validA =
-      cardA.dataset.enemyArrival !== "" &&
+      cardA.dataset.enemyArrival !==
+        "" &&
       Number.isFinite(arrivalA);
 
     const validB =
-      cardB.dataset.enemyArrival !== "" &&
+      cardB.dataset.enemyArrival !==
+        "" &&
       Number.isFinite(arrivalB);
 
     if (validA && validB) {
@@ -2257,7 +2829,7 @@ function sortCardsByArrival() {
 ========================================================= */
 
 function analyzeArrivalGaps() {
-  const calculatedCards =
+  const cards =
     Array.from(
       rallyCardList.querySelectorAll(
         ".rally-card"
@@ -2265,7 +2837,8 @@ function analyzeArrivalGaps() {
     )
       .filter((card) => {
         return (
-          card.dataset.enemyArrival !== "" &&
+          card.dataset.enemyArrival !==
+            "" &&
           Number.isFinite(
             Number(
               card.dataset.enemyArrival
@@ -2284,12 +2857,12 @@ function analyzeArrivalGaps() {
         );
       });
 
-  if (calculatedCards.length < 2) {
+  if (cards.length < 2) {
     gapAnalysisResult.className =
       "empty-result";
 
     gapAnalysisResult.textContent =
-      "2人以上の相手を計算すると、着弾間隔を分析できます。";
+      "2人以上の相手を計算すると着弾間隔を分析できます。";
 
     return;
   }
@@ -2302,14 +2875,14 @@ function analyzeArrivalGaps() {
 
   for (
     let index = 0;
-    index < calculatedCards.length - 1;
+    index < cards.length - 1;
     index += 1
   ) {
     const firstCard =
-      calculatedCards[index];
+      cards[index];
 
     const secondCard =
-      calculatedCards[index + 1];
+      cards[index + 1];
 
     const firstArrival =
       Number(
@@ -2349,25 +2922,39 @@ function analyzeArrivalGaps() {
 
     if (gapSeconds >= 1.5) {
       item.classList.add("good");
+
       evaluation =
         "差し込み候補";
-    } else if (gapSeconds >= 0.8) {
+    } else if (
+      gapSeconds >= 0.8
+    ) {
       item.classList.add("medium");
+
       evaluation =
         "成功率低め";
     } else {
       item.classList.add("bad");
+
       evaluation =
         "差し込み困難";
     }
 
     item.innerHTML = `
-      <strong>${escapeHtml(firstName)} → ${escapeHtml(secondName)}</strong>
+      <strong>
+        ${escapeHtml(firstName)}
+        →
+        ${escapeHtml(secondName)}
+      </strong>
+
       <p>
         着弾間隔：
-        <strong>${gapSeconds.toFixed(1)}秒</strong>
-        ／ ${evaluation}
+        <strong>
+          ${gapSeconds.toFixed(1)}秒
+        </strong>
+        ／
+        ${evaluation}
       </p>
+
       <small>
         ${formatClock(firstArrival)}
         →
@@ -2378,29 +2965,25 @@ function analyzeArrivalGaps() {
     list.appendChild(item);
   }
 
-  gapAnalysisResult.className = "";
-  gapAnalysisResult.innerHTML = "";
-  gapAnalysisResult.appendChild(list);
-}
+  gapAnalysisResult.className =
+    "";
 
+  gapAnalysisResult.innerHTML =
+    "";
 
-function escapeHtml(text) {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#039;");
+  gapAnalysisResult.appendChild(
+    list
+  );
 }
 
 
 /* =========================================================
-   指定時刻への着弾計算
+   指定時刻への着弾
 ========================================================= */
 
 function calculateArrivalDeparture() {
   const marchSeconds =
-    getEffectiveMarchSeconds();
+    getMyEffectiveMarchSeconds();
 
   if (
     !Number.isFinite(marchSeconds) ||
@@ -2461,19 +3044,22 @@ function calculateArrivalDeparture() {
   const targetDate =
     new Date(now);
 
+  const wholeSecond =
+    Math.floor(second);
+
+  const milliseconds =
+    Math.round(
+      (second - wholeSecond) *
+      1000
+    );
+
   targetDate.setHours(
     Math.floor(hour),
     Math.floor(minute),
-    Math.floor(second),
-    Math.round(
-      (second % 1) * 1000
-    )
+    wholeSecond,
+    milliseconds
   );
 
-  /*
-    入力時刻がすでに過ぎている場合、
-    翌日の同時刻として扱う。
-  */
   if (
     targetDate.getTime() <
     Date.now() - 1000
@@ -2497,7 +3083,9 @@ function calculateArrivalDeparture() {
     tapCorrection * 1000;
 
   arrivalTargetResult.textContent =
-    formatClock(targetTimestamp);
+    formatClock(
+      targetTimestamp
+    );
 
   arrivalDepartureResult.textContent =
     formatClock(
@@ -2529,12 +3117,15 @@ function updateArrivalCountdown() {
    保存
 ========================================================= */
 
-function collectCardData(card) {
+function collectRallyCardData(card) {
   return {
     name:
       card.querySelector(
         ".rally-name-input"
       ).value,
+
+    enemyMarchMode:
+      card.dataset.enemyMarchMode,
 
     enemyMinutes:
       card.querySelector(
@@ -2546,6 +3137,29 @@ function collectCardData(card) {
         ".enemy-march-seconds-input"
       ).value,
 
+    enemyCoordinateX:
+      card.querySelector(
+        ".enemy-coordinate-x"
+      ).value,
+
+    enemyCoordinateY:
+      card.querySelector(
+        ".enemy-coordinate-y"
+      ).value,
+
+    enemySnowActive:
+      card.querySelector(
+        ".enemy-snow-leopard-active"
+      ).checked,
+
+    enemySnowLevel:
+      card.querySelector(
+        ".enemy-snow-leopard-level"
+      ).value,
+
+    cardMode:
+      card.dataset.cardMode,
+
     remainingMinutes:
       card.querySelector(
         ".remaining-minutes-input"
@@ -2554,10 +3168,7 @@ function collectCardData(card) {
     remainingSeconds:
       card.querySelector(
         ".remaining-seconds-input"
-      ).value,
-
-    mode:
-      card.dataset.cardMode
+      ).value
   };
 }
 
@@ -2571,15 +3182,26 @@ function createSaveData() {
     );
 
   return {
-    version: 10,
+    version: 20,
 
     appMode:
       currentAppMode,
 
-    marchInputMode:
+    myMarchInputMode:
       currentMarchInputMode,
 
-    manualMarch: {
+    defense: {
+      x:
+        defenseCoordinateXInput.value,
+
+      y:
+        defenseCoordinateYInput.value,
+
+      targetType:
+        defenseTargetTypeSelect.value
+    },
+
+    myManualMarch: {
       minutes:
         myMarchMinutesInput.value,
 
@@ -2587,24 +3209,15 @@ function createSaveData() {
         myMarchSecondsInput.value
     },
 
-    coordinates: {
-      myX:
+    myCoordinates: {
+      x:
         myCoordinateXInput.value,
 
-      myY:
-        myCoordinateYInput.value,
-
-      targetX:
-        targetCoordinateXInput.value,
-
-      targetY:
-        targetCoordinateYInput.value,
-
-      targetType:
-        targetTypeSelect.value
+      y:
+        myCoordinateYInput.value
     },
 
-    snowLeopard: {
+    mySnowLeopard: {
       active:
         snowLeopardActiveInput.checked,
 
@@ -2620,7 +3233,7 @@ function createSaveData() {
         tapCorrectionInput.value
     },
 
-    arrivalTime: {
+    targetArrival: {
       hour:
         targetArrivalHourInput.value,
 
@@ -2632,7 +3245,9 @@ function createSaveData() {
     },
 
     cards:
-      cards.map(collectCardData)
+      cards.map(
+        collectRallyCardData
+      )
   };
 }
 
@@ -2680,7 +3295,9 @@ function loadSavedData() {
 
   if (!savedData) {
     createRallyCard();
-    updateMarchDisplays();
+
+    updateMyMarchDisplays();
+
     return;
   }
 
@@ -2689,44 +3306,44 @@ function loadSavedData() {
 
 
 function applySaveData(savedData) {
-  myMarchMinutesInput.value =
-    savedData.manualMarch?.minutes ??
-    "0";
-
-  myMarchSecondsInput.value =
-    savedData.manualMarch?.seconds ??
+  defenseCoordinateXInput.value =
+    savedData.defense?.x ??
     "";
 
-  myCoordinateXInput.value =
-    savedData.coordinates?.myX ??
+  defenseCoordinateYInput.value =
+    savedData.defense?.y ??
     "";
 
-  myCoordinateYInput.value =
-    savedData.coordinates?.myY ??
-    "";
-
-  targetCoordinateXInput.value =
-    savedData.coordinates?.targetX ??
-    "";
-
-  targetCoordinateYInput.value =
-    savedData.coordinates?.targetY ??
-    "";
-
-  targetTypeSelect.value =
-    savedData.coordinates?.targetType ===
+  defenseTargetTypeSelect.value =
+    savedData.defense?.targetType ===
     "city"
       ? "city"
       : "castle";
 
+  myMarchMinutesInput.value =
+    savedData.myManualMarch?.minutes ??
+    "0";
+
+  myMarchSecondsInput.value =
+    savedData.myManualMarch?.seconds ??
+    "";
+
+  myCoordinateXInput.value =
+    savedData.myCoordinates?.x ??
+    "";
+
+  myCoordinateYInput.value =
+    savedData.myCoordinates?.y ??
+    "";
+
   snowLeopardActiveInput.checked =
     Boolean(
-      savedData.snowLeopard?.active
+      savedData.mySnowLeopard?.active
     );
 
   snowLeopardLevelSelect.value =
     String(
-      savedData.snowLeopard?.level ??
+      savedData.mySnowLeopard?.level ??
       "0"
     );
 
@@ -2739,18 +3356,19 @@ function applySaveData(savedData) {
     "0";
 
   targetArrivalHourInput.value =
-    savedData.arrivalTime?.hour ??
+    savedData.targetArrival?.hour ??
     "";
 
   targetArrivalMinuteInput.value =
-    savedData.arrivalTime?.minute ??
+    savedData.targetArrival?.minute ??
     "";
 
   targetArrivalSecondInput.value =
-    savedData.arrivalTime?.second ??
+    savedData.targetArrival?.second ??
     "";
 
-  rallyCardList.innerHTML = "";
+  rallyCardList.innerHTML =
+    "";
 
   if (
     Array.isArray(savedData.cards) &&
@@ -2758,7 +3376,9 @@ function applySaveData(savedData) {
   ) {
     savedData.cards.forEach(
       (cardData) => {
-        createRallyCard(cardData);
+        createRallyCard(
+          cardData
+        );
       }
     );
   } else {
@@ -2769,17 +3389,19 @@ function applySaveData(savedData) {
     savedData.appMode
   );
 
-  setMarchInputMode(
-    savedData.marchInputMode
+  setMyMarchInputMode(
+    savedData.myMarchInputMode
   );
 
-  updateSnowLeopardControls();
-  calculateEstimatedMarchTime();
-  updateMarchDisplays();
+  updateMySnowLeopardControls();
+
+  updateAllCoordinateEstimates();
+
+  updateMyMarchDisplays();
 }
 
 
-function applySavedCardData(
+function applySavedRallyCardData(
   card,
   savedData
 ) {
@@ -2788,32 +3410,87 @@ function applySavedCardData(
   ).value =
     savedData.name ?? "";
 
+  card.dataset.enemyMarchMode =
+    savedData.enemyMarchMode ===
+    "coordinate"
+      ? "coordinate"
+      : "manual";
+
   card.querySelector(
     ".enemy-march-minutes-input"
   ).value =
-    savedData.enemyMinutes ?? "0";
+    savedData.enemyMinutes ??
+    "0";
 
   card.querySelector(
     ".enemy-march-seconds-input"
   ).value =
-    savedData.enemySeconds ?? "";
+    savedData.enemySeconds ??
+    "";
+
+  card.querySelector(
+    ".enemy-coordinate-x"
+  ).value =
+    savedData.enemyCoordinateX ??
+    "";
+
+  card.querySelector(
+    ".enemy-coordinate-y"
+  ).value =
+    savedData.enemyCoordinateY ??
+    "";
+
+  card.querySelector(
+    ".enemy-snow-leopard-active"
+  ).checked =
+    Boolean(
+      savedData.enemySnowActive
+    );
+
+  card.querySelector(
+    ".enemy-snow-leopard-level"
+  ).value =
+    String(
+      savedData.enemySnowLevel ??
+      "0"
+    );
+
+  card.querySelector(
+    ".enemy-snow-leopard-level"
+  ).disabled =
+    !card.querySelector(
+      ".enemy-snow-leopard-active"
+    ).checked;
+
+  card.dataset.cardMode =
+    savedData.cardMode ===
+    "march"
+      ? "march"
+      : "rally";
 
   card.querySelector(
     ".remaining-minutes-input"
   ).value =
-    savedData.remainingMinutes ?? "0";
+    savedData.remainingMinutes ??
+    "0";
 
   card.querySelector(
     ".remaining-seconds-input"
   ).value =
-    savedData.remainingSeconds ?? "";
+    savedData.remainingSeconds ??
+    "";
 
-  card.dataset.cardMode =
-    savedData.mode === "march"
-      ? "march"
-      : "rally";
+  updateEnemyMarchModeDisplay(
+    card
+  );
 
-  updateCardModeDisplay(card);
+  updateRallyCardModeDisplay(
+    card
+  );
+
+  updateEnemyCoordinateEstimate(
+    card
+  );
 }
 
 
@@ -2822,19 +3499,19 @@ function applySavedCardData(
 ========================================================= */
 
 function exportData() {
-  const saveData =
+  const data =
     createSaveData();
 
-  const jsonText =
+  const json =
     JSON.stringify(
-      saveData,
+      data,
       null,
       2
     );
 
   const blob =
     new Blob(
-      [jsonText],
+      [json],
       {
         type: "application/json"
       }
@@ -2846,27 +3523,31 @@ function exportData() {
   const link =
     document.createElement("a");
 
-  const date =
+  const now =
     new Date();
 
-  const fileDate =
+  const dateText =
     [
-      date.getFullYear(),
+      now.getFullYear(),
       String(
-        date.getMonth() + 1
+        now.getMonth() + 1
       ).padStart(2, "0"),
       String(
-        date.getDate()
+        now.getDate()
       ).padStart(2, "0")
     ].join("-");
 
   link.href = url;
 
   link.download =
-    `wos-timing-${fileDate}.json`;
+    `wos-timing-${dateText}.json`;
 
-  document.body.appendChild(link);
+  document.body.appendChild(
+    link
+  );
+
   link.click();
+
   link.remove();
 
   URL.revokeObjectURL(url);
@@ -2886,7 +3567,10 @@ function importDataFromFile(file) {
             String(reader.result)
           );
 
-        applySaveData(importedData);
+        applySaveData(
+          importedData
+        );
+
         saveAllData();
 
         window.alert(
@@ -2945,7 +3629,9 @@ arrivalModeButton.addEventListener(
 manualMarchModeButton.addEventListener(
   "click",
   () => {
-    setMarchInputMode("manual");
+    setMyMarchInputMode(
+      "manual"
+    );
   }
 );
 
@@ -2953,59 +3639,66 @@ manualMarchModeButton.addEventListener(
 coordinateMarchModeButton.addEventListener(
   "click",
   () => {
-    setMarchInputMode("coordinate");
-    calculateEstimatedMarchTime();
+    setMyMarchInputMode(
+      "coordinate"
+    );
   }
 );
 
 
 [
-  myCoordinateXInput,
-  myCoordinateYInput,
-  targetCoordinateXInput,
-  targetCoordinateYInput
+  defenseCoordinateXInput,
+  defenseCoordinateYInput
 ].forEach((input) => {
   input.addEventListener(
     "input",
     () => {
-      calculateEstimatedMarchTime();
+      updateAllCoordinateEstimates();
       saveAllData();
     }
   );
 });
 
 
-targetTypeSelect.addEventListener(
+defenseTargetTypeSelect.addEventListener(
   "change",
   () => {
-    calculateEstimatedMarchTime();
+    updateAllCoordinateEstimates();
     saveAllData();
   }
 );
 
 
-swapCoordinatesButton.addEventListener(
-  "click",
-  swapCoordinates
-);
+[
+  myCoordinateXInput,
+  myCoordinateYInput
+].forEach((input) => {
+  input.addEventListener(
+    "input",
+    () => {
+      updateMyEstimatedMarch();
+      saveAllData();
+    }
+  );
+});
 
 
 applyEstimatedMarchButton.addEventListener(
   "click",
-  applyEstimatedMarchTime
+  applyMyEstimatedMarch
 );
 
 
 snowLeopardActiveInput.addEventListener(
   "change",
-  updateSnowLeopardControls
+  updateMySnowLeopardControls
 );
 
 
 snowLeopardLevelSelect.addEventListener(
   "change",
   () => {
-    updateMarchDisplays();
+    updateMyMarchDisplays();
     saveAllData();
   }
 );
@@ -3020,7 +3713,7 @@ snowLeopardLevelSelect.addEventListener(
   input.addEventListener(
     "input",
     () => {
-      updateMarchDisplays();
+      updateMyMarchDisplays();
       saveAllData();
     }
   );
@@ -3035,7 +3728,7 @@ myMarchSecondsInput.addEventListener(
       myMarchSecondsInput
     );
 
-    updateMarchDisplays();
+    updateMyMarchDisplays();
     saveAllData();
   }
 );
@@ -3134,7 +3827,8 @@ importFileInput.addEventListener(
       importDataFromFile(file);
     }
 
-    importFileInput.value = "";
+    importFileInput.value =
+      "";
   }
 );
 
@@ -3155,7 +3849,8 @@ alertOverlay.addEventListener(
   "click",
   (event) => {
     if (
-      event.target === alertOverlay
+      event.target ===
+      alertOverlay
     ) {
       closeDepartureAlert();
     }
@@ -3172,13 +3867,12 @@ initializeInputHelpers();
 loadSavedData();
 
 updateCurrentClock();
+
 updateAllCountdowns();
+
 updateMyMarchDisplays();
 
 
-/*
-  0.1秒ごとに更新
-*/
 setInterval(() => {
   updateCurrentClock();
   updateAllCountdowns();
