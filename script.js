@@ -1,4 +1,4 @@
-alert("JS読み込み成功");
+　
 
 "use strict";
 
