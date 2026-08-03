@@ -5,164 +5,377 @@
 
   <meta
     name="viewport"
-    content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
   >
 
-  <title>ホワサバ週間タスク表</title>
+  <title>WOS 差し込み時刻計算</title>
 
   <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-  <main class="app">
-    <h1>週間タスク表作成エディタ</h1>
 
-    <!-- イベントタブ -->
-    <section class="tabs-area">
-      <div id="eventTabs" class="event-tabs"></div>
+  <main class="container">
 
-      <button
-        id="addEventButton"
-        class="add-event-button"
-        type="button"
-        aria-label="イベント追加"
-      >
-        ＋
-      </button>
-    </section>
+    <header class="page-header">
+      <h1>WOS 差し込み時刻計算</h1>
 
-    <!-- イベント編集 -->
-    <section class="editor-card">
-      <div class="event-name-row">
-        <label for="eventNameInput">イベント名</label>
-
-        <input
-          id="eventNameInput"
-          type="text"
-          maxlength="20"
-          placeholder="イベント名"
-        >
+      <div class="current-time-area">
+        <span>現在時刻：</span>
+        <strong id="currentTime">--:--:--.-</strong>
       </div>
+    </header>
 
-      <div class="button-row">
-        <button
-          id="addTaskButton"
-          class="green-button"
-          type="button"
-        >
-          ＋ タスク追加
-        </button>
 
-        <button
-          id="shiftLeftButton"
-          class="orange-button"
-          type="button"
-        >
-          ←
-        </button>
+    <section class="settings-card">
 
-        <span class="shift-label">曜日シフト</span>
+      <h2>自分の設定</h2>
 
-        <button
-          id="shiftRightButton"
-          class="orange-button"
-          type="button"
-        >
-          →
-        </button>
-      </div>
-
-      <div class="table-scroll">
-        <table class="task-table">
-          <thead>
-            <tr>
-              <th class="task-name-column">タスク</th>
-              <th>月</th>
-              <th>火</th>
-              <th>水</th>
-              <th>木</th>
-              <th>金</th>
-              <th>土</th>
-              <th>日</th>
-              <th class="delete-column">削除</th>
-            </tr>
-          </thead>
-
-          <tbody id="taskTableBody"></tbody>
-        </table>
-      </div>
-
-      <button
-        id="deleteEventButton"
-        class="delete-event-button"
-        type="button"
-      >
-        このイベントを削除
-      </button>
-    </section>
-
-    <!-- 出力設定 -->
-    <section class="output-card">
-      <div class="setting-row">
-        <label for="symbolInput">
-          出力記号
+      <div class="form-row">
+        <label for="myMarchTime">
+          自分の行軍時間
         </label>
 
-        <input
-          id="symbolInput"
-          type="text"
-          value="◎○△□◇☆"
-          maxlength="20"
-        >
+        <div class="time-input-group">
+          <input
+            id="myMarchTime"
+            type="number"
+            min="0"
+            max="999"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="例：40"
+          >
+          <span>秒</span>
+        </div>
       </div>
 
-      <div class="setting-row">
-        <label for="spacingSelect">
-          空白調整
+
+      <div class="form-row">
+        <label for="insertDelay">
+          攻撃後の差し込み補正
         </label>
 
-        <select id="spacingSelect">
-          <option value="compact">狭い</option>
-          <option value="normal" selected>標準</option>
-          <option value="wide">広い</option>
-        </select>
+        <div class="time-input-group">
+          <input
+            id="insertDelay"
+            type="number"
+            min="0"
+            max="10"
+            step="0.1"
+            inputmode="decimal"
+            value="0.5"
+          >
+          <span>秒後</span>
+        </div>
       </div>
 
-      <div class="setting-row">
-        <label for="separatorSelect">
-          区切り記号
+
+      <div class="form-row">
+        <label for="tapCorrection">
+          タップ・通信補正
         </label>
 
-        <select id="separatorSelect">
-          <option value="│" selected>│</option>
-          <option value="｜">｜</option>
-          <option value="space">空白のみ</option>
-        </select>
+        <div class="time-input-group">
+          <input
+            id="tapCorrection"
+            type="number"
+            min="-5"
+            max="5"
+            step="0.1"
+            inputmode="decimal"
+            value="0"
+          >
+          <span>秒</span>
+        </div>
       </div>
+
+      <p class="help-text">
+        タップ・通信補正は、遅れて着弾する場合はマイナス、
+        早く着弾する場合はプラス方向に調整します。
+      </p>
+
+    </section>
+
+
+    <section class="controls">
 
       <button
-        id="createButton"
-        class="create-button"
+        id="addCardButton"
+        class="main-button"
         type="button"
       >
-        テキスト表を作成してコピー
+        ＋ 集結主追加
       </button>
 
-      <div class="output-information">
-        <span id="characterCount">文字数：0</span>
-        <span id="lineCount">改行数：0</span>
-      </div>
+      <button
+        id="sortButton"
+        class="sub-button"
+        type="button"
+      >
+        着弾順ソート
+      </button>
 
-      <textarea
-        id="outputText"
-        readonly
-        placeholder="ここにホワサバ用テキストが表示されます"
-      ></textarea>
+      <button
+        id="soundTestButton"
+        class="sub-button"
+        type="button"
+      >
+        通知テスト
+      </button>
 
-      <p id="copyMessage" class="copy-message"></p>
     </section>
+
+
+    <section
+      id="rallyCardList"
+      class="rally-card-list"
+    >
+      <!-- JavaScriptで集結主カードを追加 -->
+    </section>
+
+
+    <section class="add-bottom-area">
+
+      <button
+        id="addCardBottomButton"
+        class="main-button"
+        type="button"
+      >
+        ＋ 集結主追加
+      </button>
+
+    </section>
+
+
+    <section class="usage-card">
+
+      <h2>使い方</h2>
+
+      <ol>
+        <li>
+          最初に、自分の施設までの行軍時間を入力します。
+        </li>
+
+        <li>
+          調査した相手の集結主と行軍時間を登録します。
+        </li>
+
+        <li>
+          相手が集結中なら「集結残り」を選び、
+          ゲーム画面の残り秒数を入力して計算ボタンを押します。
+        </li>
+
+        <li>
+          相手が出発済みなら「行軍残り」を選び、
+          表示されている残り秒数を入力します。
+        </li>
+
+        <li>
+          計算後に表示される「自分の出撃時刻」に
+          行軍ボタンを押します。
+        </li>
+      </ol>
+
+    </section>
+
   </main>
 
+
+  <div
+    id="alertOverlay"
+    class="alert-overlay"
+    aria-hidden="true"
+  >
+    <div class="alert-box">
+      <div class="alert-title">
+        今です！
+      </div>
+
+      <div
+        id="alertTime"
+        class="alert-time"
+      >
+        --:--:--.-
+      </div>
+
+      <button
+        id="closeAlertButton"
+        type="button"
+      >
+        閉じる
+      </button>
+    </div>
+  </div>
+
+
+  <template id="rallyCardTemplate">
+
+    <article class="rally-card">
+
+      <button
+        class="delete-card-button"
+        type="button"
+        aria-label="カードを削除"
+      >
+        ×
+      </button>
+
+
+      <div class="card-top-row">
+
+        <input
+          class="rally-name-input"
+          type="text"
+          maxlength="30"
+          placeholder="相手の集結主名"
+        >
+
+        <span class="card-number">
+          1
+        </span>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label>
+          相手の行軍時間
+        </label>
+
+        <div class="time-input-group">
+          <input
+            class="enemy-march-time-input"
+            type="number"
+            min="0"
+            max="999"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="例：30"
+          >
+          <span>秒</span>
+        </div>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label>
+          現在の状態
+        </label>
+
+        <select class="timer-mode-select">
+          <option value="rally">
+            集結残り
+          </option>
+
+          <option value="march">
+            行軍残り
+          </option>
+        </select>
+
+      </div>
+
+
+      <div class="form-row">
+
+        <label class="remaining-time-label">
+          集結残り時間
+        </label>
+
+        <div class="time-input-group">
+          <input
+            class="remaining-time-input"
+            type="number"
+            min="0"
+            max="999"
+            step="0.1"
+            inputmode="decimal"
+            placeholder="例：10"
+          >
+          <span>秒</span>
+        </div>
+
+      </div>
+
+
+      <div class="card-button-row">
+
+        <button
+          class="calculate-button"
+          type="button"
+        >
+          この瞬間で計算
+        </button>
+
+        <button
+          class="clear-result-button"
+          type="button"
+        >
+          結果クリア
+        </button>
+
+      </div>
+
+
+      <div class="result-panel">
+
+        <div class="result-row">
+          <span>入力取得時刻：</span>
+          <strong class="captured-time-result">
+            --:--:--.-
+          </strong>
+        </div>
+
+        <div class="result-row">
+          <span>相手の出発：</span>
+          <strong class="enemy-departure-result">
+            --:--:--.-
+          </strong>
+        </div>
+
+        <div class="result-row">
+          <span>相手の着弾：</span>
+          <strong class="enemy-arrival-result">
+            --:--:--.-
+          </strong>
+        </div>
+
+        <div class="result-row highlight-row">
+          <span>自分の出撃：</span>
+          <strong class="my-departure-result">
+            --:--:--.-
+          </strong>
+        </div>
+
+        <div class="result-row">
+          <span>自分の着弾：</span>
+          <strong class="my-arrival-result">
+            --:--:--.-
+          </strong>
+        </div>
+
+        <div class="result-row countdown-row">
+          <span>出撃まで：</span>
+          <strong class="countdown-result">
+            未計算
+          </strong>
+        </div>
+
+        <div class="result-message">
+          相手の残り時間を入力して計算してください。
+        </div>
+
+      </div>
+
+    </article>
+
+  </template>
+
+
   <script src="script.js"></script>
+
 </body>
 </html>
