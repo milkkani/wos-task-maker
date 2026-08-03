@@ -171,7 +171,6 @@ select {
 
 .current-clock-card span {
   display: block;
-
   margin-bottom: 4px;
 
   color: var(--text-muted);
@@ -189,7 +188,7 @@ select {
 
 
 /* =========================
-   モード切替
+   モード切り替え
 ========================= */
 
 .mode-tabs {
@@ -209,7 +208,6 @@ select {
 
 .mode-tab {
   min-height: 52px;
-
   padding: 10px 14px;
 
   border: 0;
@@ -271,14 +269,13 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: 15px;
 
+  gap: 15px;
   margin-bottom: 18px;
 }
 
 .panel-heading h2 {
   margin: 0 0 6px;
-
   font-size: 23px;
 }
 
@@ -310,7 +307,6 @@ select {
 
 .setting-block h3 {
   margin: 0 0 13px;
-
   font-size: 17px;
 }
 
@@ -318,8 +314,8 @@ select {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
 
+  gap: 15px;
   margin-bottom: 15px;
 }
 
@@ -349,7 +345,6 @@ select {
   grid-template-columns: 1fr 1fr;
 
   gap: 6px;
-
   padding: 5px;
 
   border: 1px solid var(--border);
@@ -398,7 +393,6 @@ select {
   align-items: center;
 
   gap: 13px;
-
   margin-bottom: 15px;
 }
 
@@ -408,7 +402,6 @@ select {
 
 .form-row > label {
   color: var(--text-sub);
-
   font-size: 16px;
   line-height: 1.45;
 }
@@ -544,20 +537,6 @@ input::placeholder {
    座標入力
 ========================= */
 
-.coordinate-grid {
-  display: grid;
-
-  grid-template-columns:
-    minmax(0, 1fr)
-    auto
-    minmax(0, 1fr);
-
-  gap: 11px;
-  align-items: center;
-
-  margin-bottom: 16px;
-}
-
 .coordinate-card {
   padding: 14px;
 
@@ -598,34 +577,22 @@ input::placeholder {
   min-width: 0;
 }
 
-.swap-button {
-  width: 48px;
-  height: 48px;
+.shared-target-card {
+  margin-bottom: 16px;
 
-  padding: 0;
+  border-color: rgba(77, 145, 232, 0.38);
 
-  border: 1px solid var(--border-light);
-  border-radius: 50%;
-
-  background: var(--surface-light);
-  color: var(--text);
-
-  font-size: 23px;
-  font-weight: 900;
-
-  box-shadow: var(--shadow-small);
-
-  transition:
-    transform 0.18s ease,
-    background 0.15s ease;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(77, 145, 232, 0.1),
+      rgba(16, 27, 42, 0.28)
+    );
 }
 
-.swap-button:active {
-  transform: rotate(180deg) scale(0.94);
-}
-
-.coordinate-result-card {
-  margin-top: 16px;
+.coordinate-result-card,
+.enemy-coordinate-result-card {
+  margin-top: 15px;
   padding: 15px;
 
   border: 1px solid rgba(77, 145, 232, 0.35);
@@ -643,8 +610,8 @@ input::placeholder {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 15px;
 
+  gap: 15px;
   margin-bottom: 13px;
 }
 
@@ -662,7 +629,6 @@ input::placeholder {
   flex-wrap: wrap;
 
   gap: 12px 22px;
-
   margin-bottom: 15px;
 
   color: var(--text-sub);
@@ -712,6 +678,7 @@ input::placeholder {
 
 .switch-label input {
   position: absolute;
+
   width: 1px;
   height: 1px;
 
@@ -721,6 +688,8 @@ input::placeholder {
 
 .switch-ui {
   position: relative;
+
+  flex: 0 0 auto;
 
   width: 50px;
   height: 29px;
@@ -771,12 +740,15 @@ input::placeholder {
   font-weight: 800;
 }
 
+.compact-switch-label {
+  align-items: center;
+}
+
 .buff-time-comparison {
   display: grid;
   grid-template-columns: 1fr 1fr;
 
   gap: 10px;
-
   margin-top: 13px;
 }
 
@@ -791,7 +763,6 @@ input::placeholder {
 
 .buff-time-comparison span {
   display: block;
-
   margin-bottom: 4px;
 
   color: var(--text-muted);
@@ -914,7 +885,6 @@ button:focus-visible {
   flex-wrap: wrap;
 
   gap: 9px;
-
   margin-bottom: 17px;
 }
 
@@ -1042,14 +1012,82 @@ button:focus-visible {
   font-weight: 900;
 }
 
-.card-section {
-  margin-bottom: 14px;
+
+/* =========================
+   相手行軍時間設定
+========================= */
+
+.enemy-march-setting-block {
+  margin-bottom: 13px;
+}
+
+.enemy-march-setting-block h3 {
+  margin: 0 0 10px;
+
+  color: var(--text-sub);
+  font-size: 15px;
+}
+
+.enemy-march-mode-control {
+  width: 100%;
+}
+
+.enemy-manual-settings,
+.enemy-coordinate-settings {
+  margin-bottom: 16px;
+  padding: 14px;
+
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+
+  background: rgba(0, 0, 0, 0.13);
+}
+
+.enemy-coordinate-settings {
+  border-color: rgba(77, 145, 232, 0.26);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(77, 145, 232, 0.07),
+      rgba(0, 0, 0, 0.12)
+    );
+}
+
+.enemy-coordinate-settings .coordinate-card {
+  margin-bottom: 13px;
+}
+
+.enemy-buff-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 145px;
+  align-items: center;
+
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.enemy-buff-row select {
+  width: 100%;
+}
+
+.enemy-coordinate-result-card {
+  margin-top: 0;
+}
+
+.enemy-coordinate-result-card
+.coordinate-result-main strong {
+  font-size: 21px;
 }
 
 
 /* =========================
-   集結中・行軍中切替
+   カード内通常設定
 ========================= */
+
+.card-section {
+  margin-bottom: 14px;
+}
 
 .card-mode-buttons {
   display: grid;
@@ -1225,7 +1263,6 @@ button:focus-visible {
   grid-template-columns: repeat(3, 1fr);
 
   gap: 9px;
-
   margin-top: 13px;
 }
 
@@ -1251,7 +1288,6 @@ button:focus-visible {
 
 .acceleration-option > strong {
   display: block;
-
   margin-bottom: 7px;
 
   font-size: 16px;
@@ -1334,6 +1370,16 @@ button:focus-visible {
   border-radius: 11px;
 
   background: rgba(0, 0, 0, 0.18);
+}
+
+.gap-analysis-item p {
+  margin: 8px 0;
+
+  color: var(--text-sub);
+}
+
+.gap-analysis-item small {
+  color: var(--text-muted);
 }
 
 .gap-analysis-item.good {
@@ -1461,7 +1507,6 @@ button:focus-visible {
 
 .alert-icon {
   margin-bottom: 5px;
-
   font-size: 45px;
 }
 
@@ -1469,12 +1514,11 @@ button:focus-visible {
   margin-bottom: 6px;
 
   font-size: 44px;
-  font-weight: 1000;
+  font-weight: 900;
 }
 
 .alert-rally-name {
   min-height: 23px;
-
   margin-bottom: 7px;
 
   color: rgba(255, 255, 255, 0.83);
@@ -1536,20 +1580,6 @@ button:focus-visible {
 
   .panel-heading .primary-button {
     width: 100%;
-  }
-
-  .coordinate-grid {
-    grid-template-columns: 1fr;
-  }
-
-  .swap-button {
-    justify-self: center;
-
-    transform: rotate(90deg);
-  }
-
-  .swap-button:active {
-    transform: rotate(270deg) scale(0.94);
   }
 }
 
@@ -1623,7 +1653,7 @@ button:focus-visible {
     align-items: flex-start;
   }
 
-  .switch-label {
+  .switch-label:not(.compact-switch-label) {
     flex-direction: column;
     gap: 4px;
   }
@@ -1666,6 +1696,19 @@ button:focus-visible {
     padding-right: 39px;
   }
 
+  .enemy-manual-settings,
+  .enemy-coordinate-settings {
+    padding: 12px 10px;
+  }
+
+  .enemy-buff-row {
+    grid-template-columns: 1fr;
+  }
+
+  .compact-switch-label {
+    justify-content: flex-start;
+  }
+
   .card-mode-buttons {
     width: 100%;
   }
@@ -1705,7 +1748,6 @@ button:focus-visible {
 
   .acceleration-option > strong {
     margin: 0;
-
     text-align: right;
   }
 
@@ -1808,5 +1850,16 @@ button:focus-visible {
       minmax(0, 1fr)
       auto
       minmax(0, 1.15fr);
+  }
+
+  .enemy-coordinate-result-card
+  .coordinate-result-main {
+    display: grid;
+    grid-template-columns: 1fr;
+  }
+
+  .enemy-coordinate-result-card
+  .coordinate-result-main strong {
+    text-align: right;
   }
 }
