@@ -1,6 +1,12 @@
-/* =========================
+/* =========================================================
+   WOS 行軍タイミングツール
+   style.css Ver.3.0
+========================================================= */
+
+
+/* =========================================================
    基本設定
-========================= */
+========================================================= */
 
 * {
   box-sizing: border-box;
@@ -10,16 +16,18 @@
   color-scheme: dark;
 
   --background: #0c0d10;
-  --surface: #17191e;
-  --surface-light: #20232a;
+  --background-light: #151820;
+
+  --surface: #191c22;
+  --surface-light: #232730;
   --surface-dark: #111317;
 
   --border: #343842;
-  --border-light: #484d59;
+  --border-light: #4b505c;
 
   --text: #f5f6f8;
-  --text-sub: #b9bec8;
-  --text-muted: #848a96;
+  --text-sub: #bdc2cc;
+  --text-muted: #858c98;
 
   --primary: #4d91e8;
   --primary-dark: #286dbf;
@@ -91,14 +99,14 @@ button {
   -webkit-tap-highlight-color: transparent;
 }
 
-input,
-select {
-  color: var(--text);
-}
-
 button,
 select {
   cursor: pointer;
+}
+
+input,
+select {
+  color: var(--text);
 }
 
 .hidden {
@@ -106,9 +114,9 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    アプリ全体
-========================= */
+========================================================= */
 
 .app-container {
   width: 100%;
@@ -122,13 +130,14 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    ヘッダー
-========================= */
+========================================================= */
 
 .app-header {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
+
   gap: 18px;
   align-items: end;
 
@@ -152,7 +161,7 @@ select {
 }
 
 .current-clock-card {
-  min-width: 185px;
+  min-width: 215px;
 
   padding: 12px 15px;
 
@@ -162,34 +171,97 @@ select {
   background:
     linear-gradient(
       145deg,
-      rgba(40, 44, 53, 0.95),
-      rgba(22, 24, 29, 0.95)
+      rgba(40, 44, 53, 0.96),
+      rgba(22, 24, 29, 0.96)
     );
 
   box-shadow: var(--shadow-small);
 }
 
-.current-clock-card span {
-  display: block;
-  margin-bottom: 4px;
+.clock-top-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 
+  gap: 9px;
+  margin-bottom: 8px;
+}
+
+.clock-top-row > span {
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.current-clock-card strong {
+.current-clock-card > strong {
   display: block;
 
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 900;
   letter-spacing: 0.04em;
   font-variant-numeric: tabular-nums;
 }
 
 
-/* =========================
+/* =========================================================
+   JST / UTC切り替え
+========================================================= */
+
+.timezone-buttons {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+
+  gap: 3px;
+  padding: 3px;
+
+  border: 1px solid var(--border);
+  border-radius: 8px;
+
+  background: var(--surface-dark);
+}
+
+.timezone-button {
+  min-width: 47px;
+  min-height: 31px;
+
+  padding: 4px 8px;
+
+  border: 0;
+  border-radius: 6px;
+
+  background: transparent;
+  color: var(--text-muted);
+
+  font-size: 12px;
+  font-weight: 900;
+
+  transition:
+    background 0.15s ease,
+    color 0.15s ease,
+    transform 0.08s ease;
+}
+
+.timezone-button.active {
+  background:
+    linear-gradient(
+      145deg,
+      var(--primary),
+      var(--primary-dark)
+    );
+
+  color: #ffffff;
+
+  box-shadow:
+    0 3px 9px rgba(33, 107, 191, 0.3);
+}
+
+.timezone-button:active {
+  transform: scale(0.96);
+}
+
+
+/* =========================================================
    モード切り替え
-========================= */
+========================================================= */
 
 .mode-tabs {
   display: grid;
@@ -208,6 +280,7 @@ select {
 
 .mode-tab {
   min-height: 52px;
+
   padding: 10px 14px;
 
   border: 0;
@@ -244,9 +317,9 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    共通パネル
-========================= */
+========================================================= */
 
 .panel {
   margin-bottom: 18px;
@@ -276,6 +349,7 @@ select {
 
 .panel-heading h2 {
   margin: 0 0 6px;
+
   font-size: 23px;
 }
 
@@ -288,15 +362,17 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    設定ブロック
-========================= */
+========================================================= */
 
 .setting-block {
   margin-top: 18px;
   padding-top: 18px;
 
-  border-top: 1px solid rgba(255, 255, 255, 0.08);
+  border-top:
+    1px solid
+    rgba(255, 255, 255, 0.08);
 }
 
 .setting-block:first-of-type {
@@ -307,6 +383,7 @@ select {
 
 .setting-block h3 {
   margin: 0 0 13px;
+
   font-size: 17px;
 }
 
@@ -336,9 +413,9 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    セグメントボタン
-========================= */
+========================================================= */
 
 .segmented-control {
   display: grid;
@@ -375,7 +452,8 @@ select {
   color: var(--text);
 
   box-shadow:
-    inset 0 0 0 1px var(--border-light);
+    inset 0 0 0 1px
+    var(--border-light);
 }
 
 .segment-button:active {
@@ -383,9 +461,9 @@ select {
 }
 
 
-/* =========================
+/* =========================================================
    フォーム共通
-========================= */
+========================================================= */
 
 .form-row {
   display: grid;
@@ -402,6 +480,7 @@ select {
 
 .form-row > label {
   color: var(--text-sub);
+
   font-size: 16px;
   line-height: 1.45;
 }
@@ -476,7 +555,8 @@ select:focus {
   background: #191c22;
 
   box-shadow:
-    0 0 0 3px var(--primary-soft);
+    0 0 0 3px
+    var(--primary-soft);
 }
 
 input::placeholder {
@@ -497,16 +577,18 @@ input::placeholder {
 }
 
 
-/* =========================
+/* =========================================================
    分・秒入力
-========================= */
+========================================================= */
 
 .minute-second-group {
   display: grid;
 
   grid-template-columns:
-    75px auto
-    104px auto;
+    75px
+    auto
+    104px
+    auto;
 
   align-items: center;
   justify-content: end;
@@ -533,9 +615,9 @@ input::placeholder {
 }
 
 
-/* =========================
+/* =========================================================
    座標入力
-========================= */
+========================================================= */
 
 .coordinate-card {
   padding: 14px;
@@ -543,7 +625,8 @@ input::placeholder {
   border: 1px solid var(--border);
   border-radius: var(--radius-medium);
 
-  background: rgba(9, 11, 14, 0.38);
+  background:
+    rgba(9, 11, 14, 0.38);
 }
 
 .coordinate-card h3 {
@@ -573,14 +656,11 @@ input::placeholder {
   font-weight: 900;
 }
 
-.coordinate-input {
-  min-width: 0;
-}
-
 .shared-target-card {
   margin-bottom: 16px;
 
-  border-color: rgba(77, 145, 232, 0.38);
+  border-color:
+    rgba(77, 145, 232, 0.38);
 
   background:
     linear-gradient(
@@ -595,7 +675,10 @@ input::placeholder {
   margin-top: 15px;
   padding: 15px;
 
-  border: 1px solid rgba(77, 145, 232, 0.35);
+  border:
+    1px solid
+    rgba(77, 145, 232, 0.35);
+
   border-radius: var(--radius-medium);
 
   background:
@@ -639,23 +722,18 @@ input::placeholder {
   color: var(--text);
 }
 
-.estimate-warning {
-  margin: 12px 0 0;
 
-  color: var(--text-muted);
-  font-size: 12px;
-  line-height: 1.55;
-}
-
-
-/* =========================
+/* =========================================================
    ユキヒョウ
-========================= */
+========================================================= */
 
 .snow-leopard-block {
   padding: 17px;
 
-  border: 1px solid rgba(183, 139, 238, 0.29);
+  border:
+    1px solid
+    rgba(183, 139, 238, 0.29);
+
   border-radius: var(--radius-medium);
 
   background:
@@ -688,13 +766,15 @@ input::placeholder {
 
 .switch-ui {
   position: relative;
-
   flex: 0 0 auto;
 
   width: 50px;
   height: 29px;
 
-  border: 1px solid var(--border-light);
+  border:
+    1px solid
+    var(--border-light);
+
   border-radius: 999px;
 
   background: #30343d;
@@ -719,7 +799,8 @@ input::placeholder {
   background: #ffffff;
 
   box-shadow:
-    0 2px 5px rgba(0, 0, 0, 0.35);
+    0 2px 5px
+    rgba(0, 0, 0, 0.35);
 
   transition:
     transform 0.18s ease;
@@ -736,12 +817,9 @@ input::placeholder {
 
 .switch-text {
   color: var(--text-sub);
+
   font-size: 14px;
   font-weight: 800;
-}
-
-.compact-switch-label {
-  align-items: center;
 }
 
 .buff-time-comparison {
@@ -777,9 +855,9 @@ input::placeholder {
 }
 
 
-/* =========================
+/* =========================================================
    共通ボタン
-========================= */
+========================================================= */
 
 .primary-button,
 .secondary-button,
@@ -816,18 +894,23 @@ input::placeholder {
   color: #ffffff;
 
   box-shadow:
-    0 5px 14px rgba(36, 108, 191, 0.32);
+    0 5px 14px
+    rgba(36, 108, 191, 0.32);
 }
 
 .secondary-button {
-  border: 1px solid var(--border-light);
+  border:
+    1px solid
+    var(--border-light);
 
   background: var(--surface-light);
   color: var(--text);
 }
 
 .danger-outline {
-  border-color: rgba(237, 115, 115, 0.54);
+  border-color:
+    rgba(237, 115, 115, 0.54);
+
   color: #ffaaaa;
 }
 
@@ -850,7 +933,9 @@ input::placeholder {
 .record-actual-departure-button {
   width: 100%;
 
-  border: 1px solid rgba(242, 202, 99, 0.55);
+  border:
+    1px solid
+    rgba(242, 202, 99, 0.55);
 
   background:
     linear-gradient(
@@ -871,14 +956,17 @@ button:active {
 }
 
 button:focus-visible {
-  outline: 3px solid rgba(77, 145, 232, 0.62);
+  outline:
+    3px solid
+    rgba(77, 145, 232, 0.62);
+
   outline-offset: 2px;
 }
 
 
-/* =========================
+/* =========================================================
    ツールバー
-========================= */
+========================================================= */
 
 .toolbar {
   display: flex;
@@ -889,9 +977,9 @@ button:focus-visible {
 }
 
 
-/* =========================
-   集結カード一覧
-========================= */
+/* =========================================================
+   集結カード
+========================================================= */
 
 .rally-card-list {
   display: grid;
@@ -944,20 +1032,24 @@ button:focus-visible {
 
 .rally-card.card-ready {
   box-shadow:
-    0 0 0 3px rgba(242, 202, 99, 0.85),
-    0 0 30px rgba(242, 202, 99, 0.25);
+    0 0 0 3px
+    rgba(242, 202, 99, 0.85),
+    0 0 30px
+    rgba(242, 202, 99, 0.25);
 }
 
 .rally-card.card-fired {
   box-shadow:
-    0 0 0 3px rgba(126, 211, 107, 0.78),
-    0 0 30px rgba(126, 211, 107, 0.22);
+    0 0 0 3px
+    rgba(126, 211, 107, 0.78),
+    0 0 30px
+    rgba(126, 211, 107, 0.22);
 }
 
 
-/* =========================
+/* =========================================================
    集結カード上部
-========================= */
+========================================================= */
 
 .delete-rally-button {
   position: absolute;
@@ -993,9 +1085,10 @@ button:focus-visible {
 .rally-name-input {
   min-width: 0;
 
+  text-align: left;
+
   font-size: 18px;
   font-weight: 800;
-  text-align: left;
 }
 
 .rally-card-number {
@@ -1003,19 +1096,23 @@ button:focus-visible {
 
   padding: 7px 9px;
 
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.12);
+
   border-radius: 9px;
 
-  background: rgba(255, 255, 255, 0.11);
+  background:
+    rgba(255, 255, 255, 0.11);
 
   text-align: center;
   font-weight: 900;
 }
 
 
-/* =========================
-   相手行軍時間設定
-========================= */
+/* =========================================================
+   相手行軍時間
+========================================================= */
 
 .enemy-march-setting-block {
   margin-bottom: 13px;
@@ -1028,23 +1125,23 @@ button:focus-visible {
   font-size: 15px;
 }
 
-.enemy-march-mode-control {
-  width: 100%;
-}
-
 .enemy-manual-settings,
 .enemy-coordinate-settings {
   margin-bottom: 16px;
   padding: 14px;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
   border-radius: 12px;
 
   background: rgba(0, 0, 0, 0.13);
 }
 
 .enemy-coordinate-settings {
-  border-color: rgba(77, 145, 232, 0.26);
+  border-color:
+    rgba(77, 145, 232, 0.26);
 
   background:
     linear-gradient(
@@ -1061,6 +1158,7 @@ button:focus-visible {
 .enemy-buff-row {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 145px;
+
   align-items: center;
 
   gap: 12px;
@@ -1081,9 +1179,9 @@ button:focus-visible {
 }
 
 
-/* =========================
-   カード内通常設定
-========================= */
+/* =========================================================
+   集結中・行軍中
+========================================================= */
 
 .card-section {
   margin-bottom: 14px;
@@ -1098,7 +1196,10 @@ button:focus-visible {
   padding: 4px;
   gap: 5px;
 
-  border: 1px solid rgba(255, 255, 255, 0.12);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.12);
+
   border-radius: 10px;
 
   background: rgba(0, 0, 0, 0.19);
@@ -1117,20 +1218,25 @@ button:focus-visible {
 }
 
 .card-mode-button.active {
-  background: rgba(255, 255, 255, 0.16);
+  background:
+    rgba(255, 255, 255, 0.16);
+
   color: #ffffff;
 }
 
 
-/* =========================
+/* =========================================================
    計算結果
-========================= */
+========================================================= */
 
 .rally-result-panel,
 .arrival-result-card {
   padding: 8px 13px;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
   border-radius: 11px;
 
   background: rgba(0, 0, 0, 0.24);
@@ -1145,7 +1251,9 @@ button:focus-visible {
 
   min-height: 48px;
 
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  border-bottom:
+    1px solid
+    rgba(255, 255, 255, 0.08);
 }
 
 .result-line:last-child {
@@ -1174,10 +1282,14 @@ button:focus-visible {
 .main-result-line strong {
   padding: 7px 10px;
 
-  border: 1px solid rgba(255, 255, 255, 0.13);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.13);
+
   border-radius: 8px;
 
-  background: rgba(255, 255, 255, 0.12);
+  background:
+    rgba(255, 255, 255, 0.12);
 
   font-size: 23px;
   font-weight: 900;
@@ -1186,6 +1298,7 @@ button:focus-visible {
 .countdown-result-line strong,
 #arrivalCountdownResult {
   color: var(--warning);
+
   font-size: 22px;
   font-weight: 900;
 }
@@ -1212,17 +1325,21 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    加速計算
-========================= */
+========================================================= */
 
 .acceleration-details {
   margin-top: 13px;
 
-  border: 1px solid rgba(242, 202, 99, 0.25);
+  border:
+    1px solid
+    rgba(242, 202, 99, 0.25);
+
   border-radius: 11px;
 
-  background: rgba(37, 31, 13, 0.3);
+  background:
+    rgba(37, 31, 13, 0.3);
 }
 
 .acceleration-details summary {
@@ -1252,7 +1369,10 @@ button:focus-visible {
   margin-top: 12px;
   padding: 0 11px;
 
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border:
+    1px solid
+    rgba(255, 255, 255, 0.08);
+
   border-radius: 9px;
 
   background: rgba(0, 0, 0, 0.18);
@@ -1303,17 +1423,23 @@ button:focus-visible {
 }
 
 .acceleration-option.success {
-  border-color: rgba(126, 211, 107, 0.55);
+  border-color:
+    rgba(126, 211, 107, 0.55);
+
   background: var(--success-soft);
 }
 
 .acceleration-option.warning {
-  border-color: rgba(242, 202, 99, 0.55);
+  border-color:
+    rgba(242, 202, 99, 0.55);
+
   background: var(--warning-soft);
 }
 
 .acceleration-option.danger {
-  border-color: rgba(237, 115, 115, 0.55);
+  border-color:
+    rgba(237, 115, 115, 0.55);
+
   background: var(--danger-soft);
 }
 
@@ -1327,7 +1453,10 @@ button:focus-visible {
   margin-top: 13px;
   padding: 12px;
 
-  border: 1px solid rgba(183, 139, 238, 0.42);
+  border:
+    1px solid
+    rgba(183, 139, 238, 0.42);
+
   border-radius: 10px;
 
   background: var(--purple-soft);
@@ -1343,14 +1472,17 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    多段分析
-========================= */
+========================================================= */
 
 .empty-result {
   padding: 22px 15px;
 
-  border: 1px dashed var(--border-light);
+  border:
+    1px dashed
+    var(--border-light);
+
   border-radius: 12px;
 
   color: var(--text-muted);
@@ -1383,24 +1515,30 @@ button:focus-visible {
 }
 
 .gap-analysis-item.good {
-  border-color: rgba(126, 211, 107, 0.5);
+  border-color:
+    rgba(126, 211, 107, 0.5);
+
   background: var(--success-soft);
 }
 
 .gap-analysis-item.medium {
-  border-color: rgba(242, 202, 99, 0.5);
+  border-color:
+    rgba(242, 202, 99, 0.5);
+
   background: var(--warning-soft);
 }
 
 .gap-analysis-item.bad {
-  border-color: rgba(237, 115, 115, 0.5);
+  border-color:
+    rgba(237, 115, 115, 0.5);
+
   background: var(--danger-soft);
 }
 
 
-/* =========================
-   着弾時刻計算
-========================= */
+/* =========================================================
+   指定時刻着弾
+========================================================= */
 
 .target-time-grid {
   display: grid;
@@ -1436,6 +1574,7 @@ button:focus-visible {
 
 .target-time-grid input {
   text-align: center;
+
   font-size: 22px;
   font-weight: 900;
 }
@@ -1445,20 +1584,21 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    データ管理
-========================= */
+========================================================= */
 
 .data-buttons {
   display: flex;
   flex-wrap: wrap;
+
   gap: 9px;
 }
 
 
-/* =========================
+/* =========================================================
    通知オーバーレイ
-========================= */
+========================================================= */
 
 .alert-overlay {
   position: fixed;
@@ -1471,7 +1611,8 @@ button:focus-visible {
 
   padding: 24px;
 
-  background: rgba(0, 0, 0, 0.84);
+  background:
+    rgba(0, 0, 0, 0.84);
 }
 
 .alert-overlay.show {
@@ -1502,11 +1643,13 @@ button:focus-visible {
   text-align: center;
 
   box-shadow:
-    0 0 55px rgba(255, 45, 45, 0.48);
+    0 0 55px
+    rgba(255, 45, 45, 0.48);
 }
 
 .alert-icon {
   margin-bottom: 5px;
+
   font-size: 45px;
 }
 
@@ -1521,7 +1664,9 @@ button:focus-visible {
   min-height: 23px;
   margin-bottom: 7px;
 
-  color: rgba(255, 255, 255, 0.83);
+  color:
+    rgba(255, 255, 255, 0.83);
+
   font-size: 17px;
   font-weight: 800;
 }
@@ -1545,26 +1690,29 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    アニメーション
-========================= */
+========================================================= */
 
 @keyframes alertBackgroundFlash {
   from {
-    background: rgba(105, 0, 0, 0.74);
+    background:
+      rgba(105, 0, 0, 0.74);
   }
 
   to {
-    background: rgba(255, 0, 0, 0.91);
+    background:
+      rgba(255, 0, 0, 0.91);
   }
 }
 
 
-/* =========================
-   タブレット以下
-========================= */
+/* =========================================================
+   タブレット
+========================================================= */
 
 @media (max-width: 720px) {
+
   .app-header {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -1584,11 +1732,12 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    スマホ
-========================= */
+========================================================= */
 
 @media (max-width: 560px) {
+
   .app-container {
     padding:
       20px
@@ -1600,8 +1749,8 @@ button:focus-visible {
     font-size: 29px;
   }
 
-  .current-clock-card strong {
-    font-size: 26px;
+  .current-clock-card > strong {
+    font-size: 27px;
   }
 
   .mode-tab {
@@ -1653,13 +1802,8 @@ button:focus-visible {
     align-items: flex-start;
   }
 
-  .switch-label:not(.compact-switch-label) {
-    flex-direction: column;
-    gap: 4px;
-  }
-
   .switch-text {
-    font-size: 11px;
+    font-size: 12px;
   }
 
   .coordinate-result-main {
@@ -1703,10 +1847,6 @@ button:focus-visible {
 
   .enemy-buff-row {
     grid-template-columns: 1fr;
-  }
-
-  .compact-switch-label {
-    justify-content: flex-start;
   }
 
   .card-mode-buttons {
@@ -1789,11 +1929,12 @@ button:focus-visible {
 }
 
 
-/* =========================
+/* =========================================================
    小さいスマホ
-========================= */
+========================================================= */
 
 @media (max-width: 390px) {
+
   .app-container {
     padding-left: 9px;
     padding-right: 9px;
@@ -1802,6 +1943,10 @@ button:focus-visible {
   .panel {
     padding-left: 12px;
     padding-right: 12px;
+  }
+
+  .clock-top-row {
+    align-items: flex-start;
   }
 
   .minute-second-group {
