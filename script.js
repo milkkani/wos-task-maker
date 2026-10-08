@@ -4592,33 +4592,22 @@ setInterval(
           }
 
            
-          if (seconds === null) {
-            throw new Error(
-              "集結 " +
-              candidate.position +
-              " の時間形式が正しくありません。"
-            );
+
+          rawResults.push(
+            "集結 " +
+            (index + 1) +
+            ": " +
+            (text.trim() || "認識できませんでした")
+          );
+
+          if (seconds !== null) {
+            recognizedCandidates.push({
+              position: index + 1,
+              seconds
+            });
           }
 
-          const remaining =
-            seconds - elapsedSeconds;
-
-          if (remaining <= 0) {
-            expiredCount++;
-            continue;
-          }
-
-          items.push({
-            position:
-              candidate.position,
-            remaining,
-            mode:
-              modeInput?.value === "march"
-                ? "march"
-                : "rally"
-          });
-        }
-
+          
         if (items.length === 0) {
           throw new Error(
             "取り込める集結がありません。撮影時刻と残り時間を確認してください。"
