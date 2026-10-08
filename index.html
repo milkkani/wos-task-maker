@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="ja">
 <head>
@@ -12,7 +13,7 @@
 
   <title>WOS 行軍タイミングツール</title>
 
-  <link rel="stylesheet" href="./style.css?v=30">
+  <link rel="stylesheet" href="./style.css?v=31">
 </head>
 
 <body>
@@ -35,7 +36,6 @@
 
       </div>
 
-
       <div class="current-clock-card">
 
         <div class="clock-top-row">
@@ -43,7 +43,6 @@
           <span>
             現在時刻
           </span>
-
 
           <div
             class="timezone-buttons"
@@ -70,7 +69,6 @@
 
         </div>
 
-
         <strong id="currentTime">
           --:--:--.-
         </strong>
@@ -78,7 +76,6 @@
       </div>
 
     </header>
-
 
     <!-- モード切り替え -->
 
@@ -92,7 +89,6 @@
         🛡 差し込み計算
       </button>
 
-
       <button
         id="arrivalModeButton"
         class="mode-tab"
@@ -102,7 +98,6 @@
       </button>
 
     </nav>
-
 
     <!-- 防衛施設 -->
 
@@ -124,13 +119,11 @@
 
       </div>
 
-
       <div class="coordinate-card shared-target-card">
 
         <h3>
           防衛施設の座標
         </h3>
-
 
         <div class="coordinate-inputs">
 
@@ -151,7 +144,6 @@
             >
 
           </label>
-
 
           <label>
 
@@ -175,13 +167,12 @@
 
       </div>
 
-
       <div class="form-row">
 
+        
         <label for="defenseTargetType">
           施設の種類
         </label>
-
 
         <select id="defenseTargetType">
 
@@ -229,7 +220,6 @@
           自分の行軍時間
         </h3>
 
-
         <div class="segmented-control">
 
           <button
@@ -239,7 +229,6 @@
           >
             手入力
           </button>
-
 
           <button
             id="coordinateMarchModeButton"
@@ -267,7 +256,6 @@
             自分の行軍時間
           </label>
 
-
           <div class="minute-second-group">
 
             <input
@@ -283,7 +271,6 @@
             <span>
               分
             </span>
-
 
             <input
               id="myMarchSeconds"
@@ -319,7 +306,6 @@
             自分の現在座標
           </h3>
 
-
           <div class="coordinate-inputs">
 
             <label>
@@ -340,7 +326,6 @@
 
             </label>
 
-
             <label>
 
               <span>
@@ -353,7 +338,7 @@
                 type="text"
                 inputmode="numeric"
                 maxlength="4"
-                placeholder="例：751"
+                placeholder="例：452"
                 autocomplete="off"
               >
 
@@ -363,7 +348,7 @@
 
         </div>
 
-
+        
         <div class="coordinate-result-card">
 
           <div class="coordinate-result-main">
@@ -378,7 +363,6 @@
 
           </div>
 
-
           <div class="coordinate-result-details">
 
             <span>
@@ -388,7 +372,6 @@
               </strong>
             </span>
 
-
             <span>
               推定誤差：
               <strong id="estimatedError">
@@ -397,7 +380,6 @@
             </span>
 
           </div>
-
 
           <button
             id="applyEstimatedMarchButton"
@@ -430,7 +412,6 @@
 
           </div>
 
-
           <label class="switch-label">
 
             <input
@@ -448,13 +429,11 @@
 
         </div>
 
-
         <div class="form-row">
 
           <label for="snowLeopardLevel">
             ユキヒョウLv
           </label>
-
 
           <select
             id="snowLeopardLevel"
@@ -501,7 +480,6 @@
 
         </div>
 
-
         <div class="buff-time-comparison">
 
           <div>
@@ -515,7 +493,6 @@
             </strong>
 
           </div>
-
 
           <div>
 
@@ -542,13 +519,11 @@
           タイミング補正
         </h3>
 
-
         <div class="form-row">
 
           <label for="insertDelay">
             相手攻撃後の差し込み
           </label>
-
 
           <div class="single-time-group">
 
@@ -557,26 +532,24 @@
               class="numeric-input cursor-end-input"
               type="text"
               inputmode="decimal"
-              maxlength="5"
-              value="0.5"
+              maxlength="6"
+              value="0"
               autocomplete="off"
             >
 
             <span>
-              秒後
+              秒
             </span>
 
           </div>
 
         </div>
 
-
         <div class="form-row">
 
           <label for="tapCorrection">
             タップ・通信補正
           </label>
-
 
           <div class="single-time-group">
 
@@ -598,7 +571,6 @@
 
         </div>
 
-
         <p class="help-text">
           実際の着弾が遅れる場合はマイナス、
           早く着弾する場合はプラスへ調整します。
@@ -616,6 +588,81 @@
       class="mode-section"
     >
 
+      <!-- スクショOCR -->
+
+      <section class="panel ocr-panel" id="ocrPanel">
+
+        <div class="panel-heading">
+          <div>
+            <h2>📸 スクショから集結を追加</h2>
+            <p>
+              画像を選択 → 時間を確認 → 集結カードへ取り込み
+            </p>
+          </div>
+        </div>
+
+        <label for="ocrImage">
+          集結一覧のスクリーンショット
+        </label>
+
+        <input
+          id="ocrImage"
+          type="file"
+          accept="image/*"
+        >
+
+        <label for="ocrCaptureTime">
+          スクショの撮影時刻
+        </label>
+
+        <input
+          id="ocrCaptureTime"
+          type="datetime-local"
+          step="1"
+        >
+
+        <p class="help-text">
+          撮影時刻は仮入力されます。
+          写真アプリで実際の時刻を確認してください。
+        </p>
+
+        <button
+          id="ocrReadButton"
+          class="primary-button"
+          type="button"
+        >
+          スクショを認識
+        </button>
+
+        <p
+          id="ocrStatus"
+          class="help-text"
+          role="status"
+        >
+          画像を選択してください。
+        </p>
+
+        <div id="ocrCandidates"></div>
+
+        <button
+          id="ocrImportButton"
+          class="primary-button"
+          type="button"
+          hidden
+        >
+          確認した時間を集結カードに追加
+        </button>
+
+        <details class="ocr-debug">
+          <summary>OCRの読み取り結果を確認</summary>
+          <pre id="ocrRaw"></pre>
+        </details>
+
+      </section>
+
+
+      <!-- 相手の集結 -->
+
       <section class="panel">
 
         <div class="panel-heading">
@@ -632,7 +679,6 @@
 
           </div>
 
-
           <button
             id="addRallyButton"
             class="primary-button"
@@ -642,7 +688,6 @@
           </button>
 
         </div>
-
 
         <div class="toolbar">
 
@@ -654,7 +699,6 @@
             着弾順に並べる
           </button>
 
-
           <button
             id="clearResultsButton"
             class="secondary-button danger-outline"
@@ -662,7 +706,6 @@
           >
             結果を全クリア
           </button>
-
 
           <button
             id="notificationTestButton"
@@ -674,7 +717,6 @@
 
         </div>
 
-
         <div
           id="rallyCardList"
           class="rally-card-list"
@@ -683,6 +725,8 @@
 
       </section>
 
+
+      <!-- 多段着弾分析 -->
 
       <section class="panel">
 
@@ -700,7 +744,6 @@
 
           </div>
 
-
           <button
             id="analyzeGapsButton"
             class="primary-button"
@@ -711,7 +754,7 @@
 
         </div>
 
-
+        
         <div
           id="gapAnalysisResult"
           class="empty-result"
@@ -749,7 +792,6 @@
 
         </div>
 
-
         <div class="target-time-grid">
 
           <label>
@@ -770,11 +812,9 @@
 
           </label>
 
-
           <span>
             :
           </span>
-
 
           <label>
 
@@ -794,11 +834,9 @@
 
           </label>
 
-
           <span>
             :
           </span>
-
 
           <label>
 
@@ -820,7 +858,6 @@
 
         </div>
 
-
         <button
           id="calculateArrivalButton"
           class="large-primary-button"
@@ -828,7 +865,6 @@
         >
           出撃時刻を計算
         </button>
-
 
         <div class="arrival-result-card">
 
@@ -844,7 +880,6 @@
 
           </div>
 
-
           <div class="result-line main-result-line">
 
             <span>
@@ -857,13 +892,13 @@
 
           </div>
 
-
           <div class="result-line">
 
             <span>
               出撃まで
             </span>
 
+            
             <strong id="arrivalCountdownResult">
               未計算
             </strong>
@@ -897,7 +932,6 @@
 
       </div>
 
-
       <div class="data-buttons">
 
         <button
@@ -908,7 +942,6 @@
           データを書き出す
         </button>
 
-
         <button
           id="importDataButton"
           class="secondary-button"
@@ -916,7 +949,6 @@
         >
           データを読み込む
         </button>
-
 
         <button
           id="resetAllDataButton"
@@ -927,7 +959,6 @@
         </button>
 
       </div>
-
 
       <input
         id="importFileInput"
@@ -998,7 +1029,6 @@
         ×
       </button>
 
-
       <div class="rally-card-header">
 
         <input
@@ -1015,7 +1045,6 @@
 
       </div>
 
-
       <div class="enemy-march-setting-block">
 
         <h3>
@@ -1023,6 +1052,7 @@
         </h3>
 
 
+      
         <div class="segmented-control">
 
           <button
@@ -1032,7 +1062,6 @@
           >
             手入力
           </button>
-
 
           <button
             class="segment-button"
@@ -1057,7 +1086,6 @@
             相手の行軍時間
           </label>
 
-
           <div class="minute-second-group">
 
             <input
@@ -1072,7 +1100,6 @@
             <span>
               分
             </span>
-
 
             <input
               class="enemy-march-seconds-input numeric-input cursor-end-input"
@@ -1104,7 +1131,6 @@
             相手集結主の都市座標
           </h3>
 
-
           <div class="coordinate-inputs">
 
             <label>
@@ -1123,7 +1149,6 @@
               >
 
             </label>
-
 
             <label>
 
@@ -1146,7 +1171,6 @@
 
         </div>
 
-
         <div class="enemy-buff-row">
 
           <label class="switch-label">
@@ -1163,7 +1187,6 @@
             </span>
 
           </label>
-
 
           <select
             class="enemy-snow-leopard-level"
@@ -1194,6 +1217,7 @@
               Lv5
             </option>
 
+            
             <option value="6">
               Lv6
             </option>
@@ -1211,6 +1235,8 @@
         </div>
 
 
+        <!-- 相手の推定行軍時間 -->
+
         <div class="enemy-coordinate-result-card">
 
           <div class="coordinate-result-main">
@@ -1225,7 +1251,6 @@
 
           </div>
 
-
           <div class="coordinate-result-details">
 
             <span>
@@ -1235,7 +1260,6 @@
               </strong>
             </span>
 
-
             <span>
               通常時間：
               <strong class="enemy-normal-estimated-time">
@@ -1244,7 +1268,6 @@
             </span>
 
           </div>
-
 
           <button
             class="secondary-button apply-enemy-estimated-button"
@@ -1268,7 +1291,6 @@
             現在の状態
           </label>
 
-
           <div class="card-mode-buttons">
 
             <button
@@ -1278,7 +1300,6 @@
             >
               集結中
             </button>
-
 
             <button
               class="card-mode-button"
@@ -1292,13 +1313,11 @@
 
         </div>
 
-
         <div class="form-row">
 
           <label class="remaining-time-label">
             集結残り時間
           </label>
-
 
           <div class="minute-second-group">
 
@@ -1314,7 +1333,6 @@
             <span>
               分
             </span>
-
 
             <input
               class="remaining-seconds-input numeric-input cursor-end-input"
@@ -1332,7 +1350,6 @@
           </div>
 
         </div>
-
 
         <button
           class="capture-calculate-button"
@@ -1360,7 +1377,6 @@
 
         </div>
 
-
         <div class="result-line">
 
           <span>
@@ -1373,7 +1389,7 @@
 
         </div>
 
-
+        
         <div class="result-line">
 
           <span>
@@ -1441,13 +1457,11 @@
           出撃が遅れた時の加速計算
         </summary>
 
-
         <div class="acceleration-content">
 
           <p class="acceleration-help">
             実際に出撃した瞬間に押してください。
           </p>
-
 
           <button
             class="record-actual-departure-button"
@@ -1455,7 +1469,6 @@
           >
             今、実際に出撃した
           </button>
-
 
           <div class="actual-departure-result">
 
@@ -1470,7 +1483,6 @@
               </strong>
 
             </div>
-
 
             <div class="result-line">
 
@@ -1529,6 +1541,7 @@
                 50%加速
               </h4>
 
+              
               <strong class="boost-50-arrival">
                 --
               </strong>
@@ -1563,7 +1576,11 @@
   </template>
 
 
-  <script src="./script.js?v=30"></script>
+  <!-- スクショOCRライブラリ -->
+  <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+
+  <!-- 行軍計算本体 -->
+  <script src="./script.js?v=31"></script>
 
 </body>
 </html>
