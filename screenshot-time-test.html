@@ -1,1 +1,233 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+        content="width=device-width, initial-scale=1">
+  <title>WOS スクショ撮影時刻テスト</title>
+
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      padding: 20px 15px;
+      background: #0c0d10;
+      color: #f5f6f8;
+      font-family: -apple-system, sans-serif;
+    }
+
+    main {
+      max-width: 650px;
+      margin: auto;
+    }
+
+    h1 {
+      font-size: 25px;
+    }
+
+    .panel {
+      background: #191c22;
+      border: 1px solid #343842;
+      border-radius: 16px;
+      padding: 18px;
+      margin-top: 18px;
+    }
+
+    p {
+      line-height: 1.7;
+    }
+
+    input {
+      width: 100%;
+      font-size: 16px;
+    }
+
+    img {
+      width: 100%;
+      margin-top: 15px;
+      border-radius: 10px;
+    }
+
+    .result {
+      margin-top: 15px;
+      padding: 14px;
+      background: #111317;
+      border-radius: 10px;
+      overflow-wrap: anywhere;
+    }
+
+    .time {
+      font-size: 24px;
+      font-weight: bold;
+      color: #7db8ff;
+    }
+
+    .warning {
+      color: #f2ca63;
+      font-size: 14px;
+    }
+
+    .label {
+      color: #bdc2cc;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+<main>
+  <h1>📸 スクショ撮影時刻テスト</h1>
+
+  <p>
+    ホワサバのスクショを選択して、
+    iPhoneから日時情報を取得できるか確認します。
+  </p>
+
+  <section class="panel">
+    <h2>① スクショを選択</h2>
+
+    <input
+      id="screenshot"
+      type="file"
+      accept="image/*"
+    >
+
+    <img
+      id="preview"
+      alt="スクショのプレビュー"
+      hidden
+    >
+  </section>
+
+  <section class="panel">
+    <h2>② 取得結果</h2>
+
+    <div id="result" class="result">
+      まだ画像が選択されていません。
+    </div>
+  </section>
+
+  <section class="panel">
+    <h2>③ 確認すること</h2>
+
+    <p>
+      写真アプリで表示される
+      撮影日時と比較してください。
+    </p>
+
+    <p class="warning">
+      ※ ファイルの最終更新日時は、
+      実際の撮影日時とは限りません。
+      秒まで一致するか確認が必要です。
+    </p>
+  </section>
+</main>
+
+<script>
+"use strict";
+
+const input =
+  document.getElementById("screenshot");
+
+const preview =
+  document.getElementById("preview");
+
+const result =
+  document.getElementById("result");
+
+let previewUrl = null;
+
+function formatDate(date) {
+  if (
+    !date ||
+    !Number.isFinite(date.getTime())
+  ) {
+    return "取得できません";
+  }
+
+  const pad = (number) =>
+    String(number).padStart(2, "0");
+
+  return (
+    date.getFullYear() + "/" +
+    pad(date.getMonth() + 1) + "/" +
+    pad(date.getDate()) + " " +
+    pad(date.getHours()) + ":" +
+    pad(date.getMinutes()) + ":" +
+    pad(date.getSeconds())
+  );
+}
+
+function addText(parent, text, className) {
+  const p = document.createElement("p");
+  p.textContent = text;
+
+  if (className) {
+    p.className = className;
+  }
+
+  parent.appendChild(p);
+}
+
+input.addEventListener("change", () => {
+  const file = input.files?.[0];
+
+  if (previewUrl) {
+    URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+
+  result.replaceChildren();
+
+  if (!file) {
+    preview.hidden = true;
+    addText(result, "画像が未選択です。");
+    return;
+  }
+
+  previewUrl = URL.createObjectURL(file);
+  preview.src = previewUrl;
+  preview.hidden = false;
+
+  const modifiedDate =
+    file.lastModified > 0
+      ? new Date(file.lastModified)
+      : null;
+
+  addText(
+    result,
+    "ファイル名：" + file.name,
+    "label"
+  );
+
+  addText(
+    result,
+    "ファイル最終更新日時",
+    "label"
+  );
+
+  addText(
+    result,
+    formatDate(modifiedDate),
+    "time"
+  );
+
+  addText(
+    result,
+    "この日時が実際の撮影時刻かどうかは、まだ未確認です。",
+    "warning"
+  );
+
+  addText(
+    result,
+    "写真アプリに表示される撮影時刻と秒まで比較してください。"
+  );
+});
+</script>
+</body>
+</html>
+
