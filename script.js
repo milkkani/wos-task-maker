@@ -4760,3 +4760,206 @@ document.getElementById("ocrImportButton")
       alert("取り込みエラー：" + error.message);
     }
   }, true);
+
+
+/* =========================================================
+   OCR取り込み修正 Ver.3.2
+   1〜3件対応・空欄スキップ
+========================================================= */
+
+(() => {
+  const button =
+    document.getElementById("ocrImportButton");
+
+  const captureInput =
+    document.getElementById("ocrCaptureTime");
+
+  const candidatesElement =
+    document.getElementById("ocrCandidates");
+
+  const statusElement =
+    document.getElementById("ocrStatus");
+
+  if (
+    !button ||
+    !captureInput ||
+    !candidatesElement
+  ) {
+    return;
+  }
+
+  // 既存のクリック処理より先に実行する
+  button.addEventListener(
+    "click",
+    (event) => {
+      event.stopImmediatePropagation();
+
+      try {
+        const capturedAt =
+          new Date(captureInput.value).getTime();
+
+        if (!Number.isFinite(capturedAt)) {
+          alert(
+            "スクショの撮影時刻を確認してください。"
+          );
+          return;
+        }
+
+        const elapsed =
+          (Date.now() - capturedAt) / 1000;
+
+        if (elapsed < -2) {
+          alert(
+            "撮影時刻が未来になっています。"
+          );
+          return;
+        }
+
+        const candidates =
+          candidatesElement.querySelectorAll(
+            ".ocr-candidate"
+          );
+
+        const items = [];
+        let skipped = 0;
+
+        candidates.forEach((candidate) => {
+          const timeInput =
+            candidate.querySelector(
+              "[data-ocr-time]"
+            );
+
+          const modeInput =
+            candidate.querySelector(
+              "[data-ocr-mode]"
+            );
+
+          const text =
+            timeInput?.value.trim() || "";
+
+          // 空欄は取り込まない
+          if (!text) {
+            skipped++;
+            return;
+          }
+
+          const match = text.match(
+            /^(\d{1,2}):([0-5]\d):([0-5]\d)$/
+          );
+
+          if (!match) {
+            throw new Error(
+              "時間の形式が正しくありません：" +
+              text
+            );
+          }
+
+          const seconds =
+            Number(match[1]) * 3600 +
+            Number(match[2]) * 60 +
+            Number(match[3]);
+
+          const remaining =
+            seconds - elapsed;
+
+          if (remaining <= 0) {
+            skipped++;
+            return;
+          }
+
+          items.push({
+            remaining,
+            mode:
+              modeInput?.value === "march"
+                ? "march"
+                : "rally"
+          });
+        });
+
+        if (items.length === 0) {
+          alert(
+            "取り込める集結がありません。\n" +
+            "認識結果と撮影時刻を確認してください。"
+          );
+          return;
+        }
+
+        const list =
+          document.getElementById(
+            "rallyCardList"
+          );
+
+        if (!list) {
+          throw new Error(
+            "集結カード一覧が見つかりません。"
+          );
+        }
+
+        items.forEach((item, index) => {
+          const card =
+            createRallyCard();
+
+          card.querySelector(
+            ".rally-name-input"
+          ).value =
+            "OCR集結 " + (index + 1);
+
+          const modeButton =
+            card.querySelector(
+              '[data-card-mode="' +
+              item.mode +
+              '"]'
+            );
+
+          if (modeButton) {
+            modeButton.click();
+          }
+
+          setMinuteSecondInputs(
+            item.remaining,
+            card.querySelector(
+              ".remaining-minutes-input"
+            ),
+            card.querySelector(
+              ".remaining-seconds-input"
+            )
+          );
+        });
+
+        saveAllData();
+
+        const message =
+          items.length +
+          "件の集結カードを追加しました！" +
+          (
+            skipped > 0
+              ? "\n" +
+                skipped +
+                "件は空欄または期限切れのためスキップしました。"
+              : ""
+          );
+
+        if (statusElement) {
+          statusElement.textContent =
+            message.replace(/\n/g, " ");
+        }
+
+        alert(message);
+
+        list.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
+        });
+
+      } catch (error) {
+        console.error(error);
+
+        alert(
+          "取り込みエラー：" +
+          error.message
+        );
+      }
+    },
+    true
+  );
+})();
