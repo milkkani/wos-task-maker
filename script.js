@@ -4245,65 +4245,81 @@ setInterval(
   }
 
   
-function createCrop(image, area) {
-  const canvas = document.createElement("canvas");
 
-  const sx = Math.floor(image.width * area.x);
-  const sy = Math.floor(image.height * area.y);
-  const sw = Math.floor(image.width * area.w);
-  const sh = Math.floor(image.height * area.h);
+  function createCrop(image, area, variant = "original") {
+    const canvas = document.createElement("canvas");
 
-  const scale = 4;
+    const sx = Math.floor(image.width * area.x);
+    const sy = Math.floor(image.height * area.y);
+    const sw = Math.floor(image.width * area.w);
+    const sh = Math.floor(image.height * area.h);
 
-  canvas.width = sw * scale;
-  canvas.height = sh * scale;
+    const scale = 4;
 
-  const ctx = canvas.getContext("2d", {
-    willReadFrequently: true
-  });
+    canvas.width = sw * scale;
+    canvas.height = sh * scale;
 
-  if (!ctx) {
-    throw new Error("画像を処理できませんでした。");
+    const ctx = canvas.getContext("2d", {
+      willReadFrequently: true
+    });
+
+    if (!ctx) {
+      throw new Error("画像を処理できませんでした。");
+    }
+
+    ctx.drawImage(
+      image,
+      sx, sy, sw, sh,
+      0, 0, canvas.width, canvas.height
+    );
+
+    if (variant === "original") {
+      return canvas;
+    }
+
+    const imageData = ctx.getImageData(
+      0, 0, canvas.width, canvas.height
+    );
+
+    const pixels = imageData.data;
+
+    for (let i = 0; i < pixels.length; i += 4) {
+      const r = pixels[i];
+      const g = pixels[i + 1];
+      const b = pixels[i + 2];
+
+      let value;
+
+      if (variant === "contrast") {
+        const brightness =
+          r * 0.299 +
+          g * 0.587 +
+          b * 0.114;
+
+        value = brightness >= 145 ? 0 : 255;
+      } else {
+        // 赤・青の背景から白い数字を抽出
+        const minimum = Math.min(r, g, b);
+        const maximum = Math.max(r, g, b);
+
+        const isWhite =
+          minimum >= 125 &&
+          maximum >= 170 &&
+          maximum - minimum <= 110;
+
+        value = isWhite ? 0 : 255;
+      }
+
+      pixels[i] = value;
+      pixels[i + 1] = value;
+      pixels[i + 2] = value;
+      pixels[i + 3] = 255;
+    }
+
+    ctx.putImageData(imageData, 0, 0);
+
+    return canvas;
   }
-
-  ctx.drawImage(
-    image,
-    sx, sy, sw, sh,
-    0, 0, canvas.width, canvas.height
-  );
-
-  const imageData = ctx.getImageData(
-    0, 0, canvas.width, canvas.height
-  );
-
-  const pixels = imageData.data;
-
-  // 赤・青の背景に共通する白い文字を抽出
-  for (let i = 0; i < pixels.length; i += 4) {
-    const r = pixels[i];
-    const g = pixels[i + 1];
-    const b = pixels[i + 2];
-
-    const brightness = Math.max(r, g, b);
-    const minimum = Math.min(r, g, b);
-
-    const isWhiteText =
-      brightness >= 175 &&
-      minimum >= 145 &&
-      brightness - minimum < 75;
-
-    const value = isWhiteText ? 0 : 255;
-
-    pixels[i] = value;
-    pixels[i + 1] = value;
-    pixels[i + 2] = value;
-    pixels[i + 3] = 255;
-  }
-
-  ctx.putImageData(imageData, 0, 0);
-
-  return canvas;
-}
 
 
   /*
@@ -4535,165 +4551,47 @@ function createCrop(image, area) {
             cropAreas.length
           );
 
-          const canvas = createCrop(
-            image,
-            cropAreas[index]
-          );
 
-          const result =
-            await worker.recognize(
-              canvas
+          const variants = [
+            "original",
+            "contrast",
+            "white"
+          ];
+
+          let text = "";
+          let seconds = null;
+          let bestConfidence = -1;
+
+          for (const variant of variants) {
+            const canvas = createCrop(
+              image,
+              cropAreas[index],
+              variant
             );
 
-          const text =
-            result.data.text || "";
+            const result =
+              await worker.recognize(canvas);
 
-          const seconds =
-            parseCountdown(text);
+            const candidateText =
+              result.data.text || "";
 
-          rawResults.push(
-            "集結 " +
-            (index + 1) +
-            ": " +
-            text.trim()
-          );
+            const candidateSeconds =
+              parseCountdown(candidateText);
 
-          if (seconds !== null) {
-            recognizedCandidates.push({
-              position: index + 1,
-              seconds
-            });
-          }
-        }
+            const confidence =
+              result.data.confidence || 0;
 
-        if (rawElement) {
-          rawElement.textContent =
-            rawResults.join("\n");
-        }
-
-        renderCandidates();
-
-        if (
-          recognizedCandidates.length === 0
-        ) {
-          setStatus(
-            "時間を認識できませんでした。別のスクショで試してください。"
-          );
-        } else {
-          setStatus(
-            recognizedCandidates.length +
-            "件の時間を認識しました。撮影時刻と残り時間を確認して追加してください。"
-          );
-        }
-
-      } catch (error) {
-        console.error(error);
-
-        setStatus(
-          "OCR認識に失敗しました：" +
-          error.message
-        );
-
-      } finally {
-        if (worker) {
-          try {
-            await worker.terminate();
-          } catch (error) {
-            console.warn(error);
-          }
-        }
-
-        isReading = false;
-        readButton.disabled = false;
-      }
-    }
-  );
-
-  /*
-   * 集結カードへの取り込み
-   * クリック処理はこれ1つだけ
-   */
-  importButton.addEventListener(
-    "click",
-    () => {
-      if (isImporting) {
-        return;
-      }
-
-      isImporting = true;
-
-      try {
-        const captureTimestamp =
-          new Date(
-            captureInput.value
-          ).getTime();
-
-        if (
-          !captureInput.value ||
-          !Number.isFinite(
-            captureTimestamp
-          )
-        ) {
-          throw new Error(
-            "スクショの撮影時刻を入力してください。"
-          );
-        }
-
-        const elapsedSeconds =
-          (Date.now() -
-            captureTimestamp) / 1000;
-
-        if (elapsedSeconds < -2) {
-          throw new Error(
-            "撮影時刻が未来になっています。"
-          );
-        }
-
-        const items = [];
-        let expiredCount = 0;
-
-        for (
-          let index = 0;
-          index <
-          recognizedCandidates.length;
-          index++
-        ) {
-          const candidate =
-            recognizedCandidates[index];
-
-          const timeInput =
-            candidatesElement.querySelector(
-              '[data-ocr-time="' +
-              index +
-              '"]'
-            );
-
-          const modeInput =
-            candidatesElement.querySelector(
-              '[data-ocr-mode="' +
-              index +
-              '"]'
-            );
-
-          if (!timeInput) {
-            throw new Error(
-              "集結 " +
-              candidate.position +
-              " の入力欄が見つかりません。"
-            );
+            if (
+              candidateSeconds !== null &&
+              confidence > bestConfidence
+            ) {
+              text = candidateText;
+              seconds = candidateSeconds;
+              bestConfidence = confidence;
+            }
           }
 
-          const text =
-            timeInput.value.trim();
-
-          // ユーザーが空欄にしたものもスキップ
-          if (!text) {
-            continue;
-          }
-
-          const seconds =
-            parseInputCountdown(text);
-
+           
           if (seconds === null) {
             throw new Error(
               "集結 " +
