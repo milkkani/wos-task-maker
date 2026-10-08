@@ -4039,579 +4039,1012 @@ setInterval(
 
 
 
-/* =========================================================
-   WOS スクショOCR Ver.3.4
-   4041行目以降の完全置き換え用
 
-   ・攻撃側（赤）と防衛側（青）
-   ・集結1〜3件
-   ・空欄は取り込まない
-   ・撮影時刻による経過時間補正
-   ・取り込みボタンの重複処理なし
-   ・既存の行軍計算式には触れない
+/* =========================================================
+   WOS スクショOCR Ver.3.5
+
+   4041行目以降をすべて置き換えるコード
+
+   ・赤い攻撃画面 / 青い防衛画面
+   ・時間の切り抜き範囲を拡大
+   ・複数の画像処理で認識
+   ・認識失敗時も手入力可能
+   ・集結1～3件対応
+   ・空欄はスキップ
+   ・撮影時刻から経過時間を補正
+   ・既存の計算式には触れない
 ========================================================= */
 
 (() => {
   "use strict";
 
-  const $ = id => document.getElementById(id);
+  const get = id =>
+    document.getElementById(id);
 
-  const imageInput = $("ocrImage");
-  const captureInput = $("ocrCaptureTime");
-  const readButton = $("ocrReadButton");
-  const importButton = $("ocrImportButton");
-  const status = $("ocrStatus");
-  const candidatesBox = $("ocrCandidates");
-  const rawBox = $("ocrRaw");
+  const imageInput = get("ocrImage");
+  const captureInput = get("ocrCaptureTime");
+  const readButton = get("ocrReadButton");
+  const importButton = get("ocrImportButton");
+  const statusElement = get("ocrStatus");
+  const candidatesElement = get("ocrCandidates");
+  const rawElement = get("ocrRaw");
 
   if (
     !imageInput ||
     !captureInput ||
     !readButton ||
     !importButton ||
-    !status ||
-    !candidatesBox
+    !statusElement ||
+    !candidatesElement
   ) {
-    console.error("OCR画面の要素が不足しています");
+    console.error(
+      "OCRに必要な画面要素がありません"
+    );
     return;
   }
 
-  // 赤・青の両画面で時間が表示される位置
-  const areas = [
-    { x: 0.72, y: 0.187, w: 0.16, h: 0.027 },
-    { x: 0.72, y: 0.448, w: 0.16, h: 0.027 },
-    { x: 0.72, y: 0.710, w: 0.16, h: 0.027 }
+  /*
+   * ホワサバの集結一覧の時間表示位置。
+   *
+   * 横幅を広げて、赤・青両方の
+   * 時間表示を含める。
+   *
+   * 位置は画像全体に対する割合。
+   */
+  const rows = [
+    { y: 0.199 },
+    { y: 0.460 },
+    { y: 0.720 }
   ];
 
-  let candidates = [];
+  /*
+   * 時間表示の横位置が異なる場合に備え、
+   * 2種類の切り抜き範囲を使用する。
+   */
+  const horizontalAreas = [
+    {
+      x: 0.70,
+      w: 0.27
+    },
+    {
+      x: 0.78,
+      w: 0.19
+    }
+  ];
+
+  let recognized = [];
   let reading = false;
   let importing = false;
 
-  function message(text) {
-    status.textContent = text;
+  function setStatus(text) {
+    statusElement.textContent = text;
   }
 
-  function showImport(show) {
-    importButton.hidden = !show;
-    importButton.disabled = !show;
+  function setImportEnabled(enabled) {
+    importButton.hidden = !enabled;
+    importButton.disabled = !enabled;
   }
 
-  function pad(n) {
-    return String(n).padStart(2, "0");
+  function pad(value) {
+    return String(value).padStart(2, "0");
   }
 
-  function localTime(timestamp) {
-    const d = new Date(timestamp);
+  function formatSeconds(value) {
+    const total = Math.max(
+      0,
+      Math.floor(value)
+    );
+
+    const hours =
+      Math.floor(total / 3600);
+
+    const minutes =
+      Math.floor((total % 3600) / 60);
+
+    const seconds =
+      total % 60;
 
     return (
-      d.getFullYear() + "-" +
-      pad(d.getMonth() + 1) + "-" +
-      pad(d.getDate()) + "T" +
-      pad(d.getHours()) + ":" +
-      pad(d.getMinutes()) + ":" +
-      pad(d.getSeconds())
+      pad(hours) + ":" +
+      pad(minutes) + ":" +
+      pad(seconds)
     );
   }
 
-  function parseTime(value) {
-    const normalized = String(value)
+  function formatLocalDate(timestamp) {
+    const date = new Date(timestamp);
+
+    return (
+      date.getFullYear() + "-" +
+      pad(date.getMonth() + 1) + "-" +
+      pad(date.getDate()) + "T" +
+      pad(date.getHours()) + ":" +
+      pad(date.getMinutes()) + ":" +
+      pad(date.getSeconds())
+    );
+  }
+
+  /*
+   * OCR結果から時刻を抽出する。
+   *
+   * 誤認識しやすい文字のみ補正。
+   * 数字が欠けた場合は採用しない。
+   */
+  function parseTime(text) {
+    const normalized = String(text)
       .replace(/[Oo]/g, "0")
       .replace(/[Il|]/g, "1")
       .replace(/：/g, ":")
-      .replace(/\s*:\s*/g, ":");
+      .replace(/[．。]/g, ":")
+      .replace(/\s*:\s*/g, ":")
+      .trim();
 
     const match = normalized.match(
       /(\d{1,2}):([0-5]\d):([0-5]\d)/
     );
 
-    if (!match) return null;
+    if (!match) {
+      return null;
+    }
 
-    const h = Number(match[1]);
-    const m = Number(match[2]);
-    const s = Number(match[3]);
+    const hours = Number(match[1]);
+    const minutes = Number(match[2]);
+    const seconds = Number(match[3]);
 
-    if (h > 23) return null;
-
-    return h * 3600 + m * 60 + s;
-  }
-
-  function formatTime(total) {
-    total = Math.max(0, Math.floor(total));
+    if (
+      hours > 23 ||
+      minutes > 59 ||
+      seconds > 59
+    ) {
+      return null;
+    }
 
     return (
-      pad(Math.floor(total / 3600)) + ":" +
-      pad(Math.floor(total % 3600 / 60)) + ":" +
-      pad(total % 60)
+      hours * 3600 +
+      minutes * 60 +
+      seconds
     );
   }
 
+  /*
+   * 手入力欄は、文字列全体が
+   * 正しい時間形式であることを確認。
+   */
+  function parseManualTime(text) {
+    const value = String(text).trim();
+
+    const match = value.match(
+      /^(\d{1,2}):([0-5]\d):([0-5]\d)$/
+    );
+
+    if (!match) {
+      return null;
+    }
+
+    const hours = Number(match[1]);
+
+    if (hours > 23) {
+      return null;
+    }
+
+    return (
+      hours * 3600 +
+      Number(match[2]) * 60 +
+      Number(match[3])
+    );
+  }
+
+  /*
+   * 画像読み込み
+   */
   function loadImage(file) {
     return new Promise((resolve, reject) => {
-      const url = URL.createObjectURL(file);
-      const img = new Image();
+      const url =
+        URL.createObjectURL(file);
 
-      img.onload = () => {
+      const image = new Image();
+
+      image.onload = () => {
         URL.revokeObjectURL(url);
-        resolve(img);
+        resolve(image);
       };
 
-      img.onerror = () => {
+      image.onerror = () => {
         URL.revokeObjectURL(url);
-        reject(new Error("画像を開けませんでした"));
+
+        reject(
+          new Error(
+            "スクショを開けませんでした"
+          )
+        );
       };
 
-      img.src = url;
+      image.src = url;
     });
   }
 
   /*
-   * OCR用画像を生成
-   * original : 元画像
-   * contrast : 輝度による白黒化
-   * white    : 白い数字を抽出
+   * 時間部分を切り抜く。
+   *
+   * 上下に余白を確保し、
+   * 文字が切れないようにする。
    */
-  function cropImage(image, area, variant) {
-    const canvas = document.createElement("canvas");
+  function makeCrop(
+    image,
+    row,
+    horizontal,
+    variant
+  ) {
+    const area = {
+      x: horizontal.x,
+      y: row.y - 0.019,
+      w: horizontal.w,
+      h: 0.038
+    };
 
-    const sx = Math.floor(image.width * area.x);
-    const sy = Math.floor(image.height * area.y);
-    const sw = Math.floor(image.width * area.w);
-    const sh = Math.floor(image.height * area.h);
+    const sx = Math.max(
+      0,
+      Math.floor(image.width * area.x)
+    );
 
-    canvas.width = sw * 4;
-    canvas.height = sh * 4;
+    const sy = Math.max(
+      0,
+      Math.floor(image.height * area.y)
+    );
 
-    const ctx = canvas.getContext("2d", {
-      willReadFrequently: true
-    });
+    const sw = Math.min(
+      image.width - sx,
+      Math.ceil(image.width * area.w)
+    );
 
-    if (!ctx) {
-      throw new Error("画像処理を開始できません");
+    const sh = Math.min(
+      image.height - sy,
+      Math.ceil(image.height * area.h)
+    );
+
+    const scale = 4;
+    const padding = 20;
+
+    const canvas =
+      document.createElement("canvas");
+
+    canvas.width =
+      sw * scale + padding * 2;
+
+    canvas.height =
+      sh * scale + padding * 2;
+
+    const context =
+      canvas.getContext("2d", {
+        willReadFrequently: true
+      });
+
+    if (!context) {
+      throw new Error(
+        "画像の切り抜きに失敗しました"
+      );
     }
 
-    ctx.drawImage(
+    context.fillStyle = "#ffffff";
+
+    context.fillRect(
+      0,
+      0,
+      canvas.width,
+      canvas.height
+    );
+
+    context.drawImage(
       image,
-      sx, sy, sw, sh,
-      0, 0, canvas.width, canvas.height
+      sx,
+      sy,
+      sw,
+      sh,
+      padding,
+      padding,
+      sw * scale,
+      sh * scale
     );
 
     if (variant === "original") {
       return canvas;
     }
 
-    const data = ctx.getImageData(
-      0, 0, canvas.width, canvas.height
+    const data = context.getImageData(
+      padding,
+      padding,
+      sw * scale,
+      sh * scale
     );
 
     const pixels = data.data;
 
-    for (let i = 0; i < pixels.length; i += 4) {
-      const r = pixels[i];
-      const g = pixels[i + 1];
-      const b = pixels[i + 2];
+    for (
+      let index = 0;
+      index < pixels.length;
+      index += 4
+    ) {
+      const red = pixels[index];
+      const green = pixels[index + 1];
+      const blue = pixels[index + 2];
 
       let value;
 
-      if (variant === "contrast") {
-        const brightness =
-          0.299 * r +
-          0.587 * g +
-          0.114 * b;
+      if (variant === "white") {
+        /*
+         * 白い数字を抽出する。
+         * 青・赤どちらの背景でも使用。
+         */
+        const minimum = Math.min(
+          red,
+          green,
+          blue
+        );
 
-        value = brightness >= 145 ? 0 : 255;
+        const maximum = Math.max(
+          red,
+          green,
+          blue
+        );
+
+        const isLight =
+          minimum >= 150 &&
+          maximum >= 180 &&
+          maximum - minimum < 95;
+
+        value = isLight ? 0 : 255;
+
       } else {
-        const min = Math.min(r, g, b);
-        const max = Math.max(r, g, b);
+        /*
+         * 明るさを基準に二値化。
+         */
+        const brightness =
+          red * 0.299 +
+          green * 0.587 +
+          blue * 0.114;
 
-        const white =
-          min >= 125 &&
-          max >= 170 &&
-          max - min <= 110;
-
-        value = white ? 0 : 255;
+        value =
+          brightness >= 165
+            ? 0
+            : 255;
       }
 
-      pixels[i] = value;
-      pixels[i + 1] = value;
-      pixels[i + 2] = value;
-      pixels[i + 3] = 255;
+      pixels[index] = value;
+      pixels[index + 1] = value;
+      pixels[index + 2] = value;
+      pixels[index + 3] = 255;
     }
 
-    ctx.putImageData(data, 0, 0);
+    context.putImageData(
+      data,
+      padding,
+      padding
+    );
 
     return canvas;
   }
 
+  /*
+   * 認識結果を入力欄に表示する。
+   *
+   * 認識できない場合も空欄を残す。
+   * ユーザーが手入力できる。
+   */
   function renderCandidates() {
-    candidatesBox.innerHTML = "";
+    candidatesElement.innerHTML = "";
 
-    candidates.forEach((item, index) => {
-      const card = document.createElement("div");
+    for (let index = 0; index < 3; index++) {
+      const item = recognized[index];
+
+      const card =
+        document.createElement("div");
+
       card.className = "ocr-candidate";
 
-      const title = document.createElement("label");
-      title.textContent = "集結 " + item.position;
+      const title =
+        document.createElement("label");
 
-      const grid = document.createElement("div");
-      grid.className = "ocr-candidate-grid";
+      title.textContent =
+        "集結 " + (index + 1);
 
-      const timeGroup = document.createElement("div");
-      const timeLabel = document.createElement("label");
+      const grid =
+        document.createElement("div");
+
+      grid.className =
+        "ocr-candidate-grid";
+
+      const timeGroup =
+        document.createElement("div");
+
+      const timeLabel =
+        document.createElement("label");
 
       timeLabel.textContent =
-        "読み取った残り時間（時:分:秒）";
+        "残り時間（時:分:秒）";
 
-      const timeInput = document.createElement("input");
+      const timeInput =
+        document.createElement("input");
 
       timeInput.type = "text";
       timeInput.inputMode = "numeric";
-      timeInput.value = formatTime(item.seconds);
-      timeInput.placeholder = "00:00:47";
-      timeInput.dataset.ocrTime = String(index);
 
-      timeGroup.append(timeLabel, timeInput);
+      timeInput.dataset.ocrTime =
+        String(index);
 
-      const modeGroup = document.createElement("div");
-      const modeLabel = document.createElement("label");
+      timeInput.value =
+        item && item.seconds !== null
+          ? formatSeconds(item.seconds)
+          : "";
 
-      modeLabel.textContent = "スクショ時点の状態";
+      timeInput.placeholder =
+        "未認識・必要なら手入力";
 
-      const modeSelect = document.createElement("select");
-      modeSelect.dataset.ocrMode = String(index);
+      const modeGroup =
+        document.createElement("div");
+
+      const modeLabel =
+        document.createElement("label");
+
+      modeLabel.textContent =
+        "スクショ時点の状態";
+
+      const modeSelect =
+        document.createElement("select");
+
+      modeSelect.dataset.ocrMode =
+        String(index);
 
       [
         ["rally", "集結中"],
         ["march", "行軍中"]
       ].forEach(([value, label]) => {
-        const option = document.createElement("option");
+        const option =
+          document.createElement("option");
+
         option.value = value;
         option.textContent = label;
+
         modeSelect.appendChild(option);
       });
 
-      modeGroup.append(modeLabel, modeSelect);
-      grid.append(timeGroup, modeGroup);
-      card.append(title, grid);
-      candidatesBox.appendChild(card);
-    });
+      timeGroup.append(
+        timeLabel,
+        timeInput
+      );
 
-    showImport(candidates.length > 0);
+      modeGroup.append(
+        modeLabel,
+        modeSelect
+      );
+
+      grid.append(
+        timeGroup,
+        modeGroup
+      );
+
+      card.append(
+        title,
+        grid
+      );
+
+      candidatesElement.appendChild(
+        card
+      );
+    }
+
+    // 認識失敗時も手入力して追加できる
+    setImportEnabled(true);
   }
 
-  // スクショを選択したとき
-  imageInput.addEventListener("change", () => {
-    const file = imageInput.files?.[0];
-    if (!file) return;
+  /*
+   * 画像を選択したとき
+   */
+  imageInput.addEventListener(
+    "change",
+    () => {
+      const file =
+        imageInput.files?.[0];
 
-    captureInput.value = localTime(
-      file.lastModified || Date.now()
-    );
+      if (!file) {
+        return;
+      }
 
-    candidates = [];
-    candidatesBox.innerHTML = "";
-
-    if (rawBox) rawBox.textContent = "";
-
-    showImport(false);
-
-    message(
-      "撮影時刻を確認してから「スクショを認識」を押してください。"
-    );
-  });
-
-  // スクショから残り時間を読み取る
-  readButton.addEventListener("click", async () => {
-    if (reading) return;
-
-    const file = imageInput.files?.[0];
-
-    if (!file) {
-      message("先にスクショを選択してください。");
-      return;
-    }
-
-    if (!window.Tesseract) {
-      message("OCRライブラリを読み込めませんでした。");
-      return;
-    }
-
-    reading = true;
-    readButton.disabled = true;
-
-    candidates = [];
-    candidatesBox.innerHTML = "";
-    if (rawBox) rawBox.textContent = "";
-    showImport(false);
-
-    let worker = null;
-
-    try {
-      message("画像を準備しています…");
-
-      const image = await loadImage(file);
-
-      worker = await window.Tesseract.createWorker("eng");
-
-      await worker.setParameters({
-        tessedit_char_whitelist: "0123456789:",
-        tessedit_pageseg_mode: "7"
-      });
-
-      const logs = [];
-
-      for (let index = 0; index < areas.length; index++) {
-        message(
-          "スクショを認識中… " +
-          (index + 1) + "/" + areas.length
+      captureInput.value =
+        formatLocalDate(
+          file.lastModified || Date.now()
         );
 
-        let best = null;
-        const attempts = [];
+      recognized = [];
 
-        for (const variant of [
-          "original",
-          "contrast",
-          "white"
-        ]) {
-          const canvas = cropImage(
-            image,
-            areas[index],
-            variant
+      candidatesElement.innerHTML = "";
+
+      if (rawElement) {
+        rawElement.textContent = "";
+      }
+
+      setImportEnabled(false);
+
+      setStatus(
+        "撮影時刻を確認してから認識してください。"
+      );
+    }
+  );
+
+  /*
+   * OCR認識
+   */
+  readButton.addEventListener(
+    "click",
+    async () => {
+      if (reading) {
+        return;
+      }
+
+      const file =
+        imageInput.files?.[0];
+
+      if (!file) {
+        setStatus(
+          "先にスクショを選択してください。"
+        );
+        return;
+      }
+
+      if (!window.Tesseract) {
+        setStatus(
+          "OCRライブラリを読み込めませんでした。"
+        );
+        return;
+      }
+
+      reading = true;
+      readButton.disabled = true;
+
+      recognized = [];
+      candidatesElement.innerHTML = "";
+
+      if (rawElement) {
+        rawElement.textContent = "";
+      }
+
+      setImportEnabled(false);
+
+      let worker = null;
+
+      try {
+        setStatus(
+          "画像を読み込んでいます…"
+        );
+
+        const image =
+          await loadImage(file);
+
+        worker =
+          await window.Tesseract.createWorker(
+            "eng"
           );
 
-          const result = await worker.recognize(canvas);
+        await worker.setParameters({
+          tessedit_char_whitelist:
+            "0123456789:",
+          tessedit_pageseg_mode: "7"
+        });
 
-          const text = (result.data.text || "").trim();
-          const seconds = parseTime(text);
-          const confidence = result.data.confidence || 0;
+        const logs = [];
 
-          attempts.push(variant + ": " + text);
+        for (
+          let rowIndex = 0;
+          rowIndex < rows.length;
+          rowIndex++
+        ) {
+          setStatus(
+            "時間を認識中… " +
+            (rowIndex + 1) +
+            "/3"
+          );
 
-          if (seconds === null) continue;
+          const attempts = [];
 
-          if (!best || confidence > best.confidence) {
-            best = {
-              seconds,
-              confidence,
-              text,
-              variant
-            };
+          const validResults = [];
+
+          /*
+           * 横幅2種類 × 画像処理3種類
+           * 合計6回、各行を認識する。
+           */
+          for (
+            const horizontal of horizontalAreas
+          ) {
+            for (
+              const variant of [
+                "original",
+                "white",
+                "contrast"
+              ]
+            ) {
+              const canvas = makeCrop(
+                image,
+                rows[rowIndex],
+                horizontal,
+                variant
+              );
+
+              const result =
+                await worker.recognize(
+                  canvas
+                );
+
+              const text =
+                String(
+                  result.data.text || ""
+                ).trim();
+
+              const seconds =
+                parseTime(text);
+
+              const confidence =
+                Number(
+                  result.data.confidence || 0
+                );
+
+              attempts.push(
+                variant +
+                " / x=" +
+                horizontal.x +
+                ": " +
+                (text || "(空欄)")
+              );
+
+              if (seconds !== null) {
+                validResults.push({
+                  seconds,
+                  confidence,
+                  text
+                });
+              }
+            }
+          }
+
+          /*
+           * 有効な時刻が複数あれば、
+           * 一致する結果を優先する。
+           */
+          const groups = new Map();
+
+          for (const result of validResults) {
+            const key =
+              result.seconds;
+
+            const current =
+              groups.get(key) || {
+                seconds: key,
+                count: 0,
+                confidence: 0
+              };
+
+            current.count++;
+
+            current.confidence = Math.max(
+              current.confidence,
+              result.confidence
+            );
+
+            groups.set(key, current);
+          }
+
+          const ranked = Array.from(
+            groups.values()
+          ).sort((a, b) => {
+            if (a.count !== b.count) {
+              return b.count - a.count;
+            }
+
+            return (
+              b.confidence -
+              a.confidence
+            );
+          });
+
+          const best =
+            ranked.length
+              ? ranked[0]
+              : null;
+
+          recognized.push({
+            position: rowIndex + 1,
+            seconds: best
+              ? best.seconds
+              : null
+          });
+
+          logs.push(
+            "集結 " +
+            (rowIndex + 1) +
+            "\n" +
+            attempts.join("\n") +
+            "\n採用: " +
+            (
+              best
+                ? formatSeconds(
+                    best.seconds
+                  )
+                : "未認識"
+            )
+          );
+        }
+
+        if (rawElement) {
+          rawElement.textContent =
+            logs.join("\n\n");
+        }
+
+        renderCandidates();
+
+        const successCount =
+          recognized.filter(
+            item =>
+              item.seconds !== null
+          ).length;
+
+        if (successCount > 0) {
+          setStatus(
+            successCount +
+            "件の時間を認識しました。数字と撮影時刻を確認してください。"
+          );
+        } else {
+          setStatus(
+            "自動認識できませんでした。下の欄に残り時間を手入力できます。"
+          );
+        }
+
+      } catch (error) {
+        console.error(error);
+
+        setStatus(
+          "OCRエラー：" +
+          error.message +
+          "。必要なら手入力してください。"
+        );
+
+        recognized = [
+          { position: 1, seconds: null },
+          { position: 2, seconds: null },
+          { position: 3, seconds: null }
+        ];
+
+        renderCandidates();
+
+      } finally {
+        if (worker) {
+          try {
+            await worker.terminate();
+          } catch (error) {
+            console.warn(error);
           }
         }
 
-        logs.push(
-          "集結 " + (index + 1) + "\n" +
-          attempts.join("\n")
-        );
-
-        if (best) {
-          candidates.push({
-            position: index + 1,
-            seconds: best.seconds
-          });
-        }
+        reading = false;
+        readButton.disabled = false;
       }
-
-      if (rawBox) {
-        rawBox.textContent = logs.join("\n\n");
-      }
-
-      renderCandidates();
-
-      if (candidates.length) {
-        message(
-          candidates.length +
-          "件認識しました。数字と撮影時刻を確認してください。"
-        );
-      } else {
-        message(
-          "時間を認識できませんでした。別のスクショを試してください。"
-        );
-      }
-
-    } catch (error) {
-      console.error(error);
-      message("OCRエラー：" + error.message);
-
-    } finally {
-      if (worker) {
-        try {
-          await worker.terminate();
-        } catch (error) {
-          console.warn(error);
-        }
-      }
-
-      reading = false;
-      readButton.disabled = false;
     }
-  });
+  );
 
   /*
    * 集結カードへの取り込み
-   * このバージョンではクリック処理は1つだけ
+   *
+   * 空欄はスキップ。
+   * 認識できた件数に関係なく、
+   * 入力された時間だけ追加する。
    */
-  importButton.addEventListener("click", () => {
-    if (importing) return;
-
-    importing = true;
-
-    try {
-      const capturedAt = new Date(
-        captureInput.value
-      ).getTime();
-
-      if (
-        !captureInput.value ||
-        !Number.isFinite(capturedAt)
-      ) {
-        throw new Error(
-          "撮影時刻を確認してください。"
-        );
+  importButton.addEventListener(
+    "click",
+    () => {
+      if (importing) {
+        return;
       }
 
-      const elapsed = (Date.now() - capturedAt) / 1000;
+      importing = true;
 
-      if (elapsed < -2) {
-        throw new Error(
-          "撮影時刻が未来になっています。"
-        );
-      }
+      try {
+        const capturedAt =
+          new Date(
+            captureInput.value
+          ).getTime();
 
-      const items = [];
-      let expired = 0;
-
-      for (let index = 0; index < candidates.length; index++) {
-        const candidate = candidates[index];
-
-        const timeInput = candidatesBox.querySelector(
-          '[data-ocr-time="' + index + '"]'
-        );
-
-        const modeInput = candidatesBox.querySelector(
-          '[data-ocr-mode="' + index + '"]'
-        );
-
-        const value = timeInput?.value.trim() || "";
-
-        // 空欄はスキップ
-        if (!value) continue;
-
-        const seconds = parseTime(value);
-
-        if (seconds === null) {
+        if (
+          !captureInput.value ||
+          !Number.isFinite(capturedAt)
+        ) {
           throw new Error(
-            "集結 " + candidate.position +
-            " の残り時間を確認してください。"
+            "撮影時刻を確認してください。"
           );
         }
 
-        const remaining = seconds - elapsed;
+        const elapsed =
+          (Date.now() - capturedAt) /
+          1000;
 
-        if (remaining <= 0) {
-          expired++;
-          continue;
+        if (elapsed < -2) {
+          throw new Error(
+            "撮影時刻が未来になっています。"
+          );
         }
 
-        items.push({
-          position: candidate.position,
-          remaining,
-          mode: modeInput?.value === "march"
-            ? "march"
-            : "rally"
+        const items = [];
+
+        let expiredCount = 0;
+
+        for (
+          let index = 0;
+          index < 3;
+          index++
+        ) {
+          const timeInput =
+            candidatesElement.querySelector(
+              '[data-ocr-time="' +
+              index +
+              '"]'
+            );
+
+          const modeInput =
+            candidatesElement.querySelector(
+              '[data-ocr-mode="' +
+              index +
+              '"]'
+            );
+
+          const value =
+            timeInput?.value.trim() || "";
+
+          // 空欄は無視
+          if (!value) {
+            continue;
+          }
+
+          const seconds =
+            parseManualTime(value);
+
+          if (seconds === null) {
+            throw new Error(
+              "集結 " +
+              (index + 1) +
+              " の時間形式が正しくありません。"
+            );
+          }
+
+          const remaining =
+            seconds - elapsed;
+
+          if (remaining <= 0) {
+            expiredCount++;
+            continue;
+          }
+
+          items.push({
+            position: index + 1,
+            remaining,
+            mode:
+              modeInput?.value === "march"
+                ? "march"
+                : "rally"
+          });
+        }
+
+        if (items.length === 0) {
+          throw new Error(
+            "取り込める集結がありません。残り時間と撮影時刻を確認してください。"
+          );
+        }
+
+        const list =
+          get("rallyCardList");
+
+        if (!list) {
+          throw new Error(
+            "集結カード一覧が見つかりません。"
+          );
+        }
+
+        for (const item of items) {
+          const card =
+            createRallyCard();
+
+          const nameInput =
+            card.querySelector(
+              ".rally-name-input"
+            );
+
+          if (nameInput) {
+            nameInput.value =
+              "OCR集結 " +
+              item.position;
+          }
+
+          const modeButton =
+            card.querySelector(
+              '[data-card-mode="' +
+              item.mode +
+              '"]'
+            );
+
+          if (modeButton) {
+            modeButton.click();
+          }
+
+          const minutesInput =
+            card.querySelector(
+              ".remaining-minutes-input"
+            );
+
+          const secondsInput =
+            card.querySelector(
+              ".remaining-seconds-input"
+            );
+
+          if (
+            !minutesInput ||
+            !secondsInput
+          ) {
+            throw new Error(
+              "集結カードの時間入力欄が見つかりません。"
+            );
+          }
+
+          setMinuteSecondInputs(
+            item.remaining,
+            minutesInput,
+            secondsInput
+          );
+        }
+
+        saveAllData();
+
+        let resultMessage =
+          items.length +
+          "件の集結カードを追加しました！";
+
+        if (expiredCount > 0) {
+          resultMessage +=
+            "\n" +
+            expiredCount +
+            "件は時間切れのためスキップしました。";
+        }
+
+        setStatus(
+          resultMessage.replace(
+            /\n/g,
+            " "
+          )
+        );
+
+        setImportEnabled(false);
+
+        window.alert(resultMessage);
+
+        list.scrollIntoView({
+          behavior: "smooth",
+          block: "start"
         });
+
+      } catch (error) {
+        console.error(error);
+
+        const errorMessage =
+          "取り込みエラー：" +
+          error.message;
+
+        setStatus(errorMessage);
+
+        window.alert(errorMessage);
+
+      } finally {
+        importing = false;
       }
-
-      if (!items.length) {
-        throw new Error(
-          "取り込める集結がありません。撮影時刻や残り時間を確認してください。"
-        );
-      }
-
-      const list = $("rallyCardList");
-
-      if (!list) {
-        throw new Error(
-          "集結カード一覧が見つかりません。"
-        );
-      }
-
-      // 入力内容の確認が終わってからカードを作成
-      items.forEach(item => {
-        const card = createRallyCard();
-
-        const name = card.querySelector(
-          ".rally-name-input"
-        );
-
-        if (name) {
-          name.value = "OCR集結 " + item.position;
-        }
-
-        const modeButton = card.querySelector(
-          '[data-card-mode="' + item.mode + '"]'
-        );
-
-        if (modeButton) {
-          modeButton.click();
-        }
-
-        const minutesInput = card.querySelector(
-          ".remaining-minutes-input"
-        );
-
-        const secondsInput = card.querySelector(
-          ".remaining-seconds-input"
-        );
-
-        if (!minutesInput || !secondsInput) {
-          throw new Error(
-            "集結カードの時間入力欄が見つかりません。"
-          );
-        }
-
-        setMinuteSecondInputs(
-          item.remaining,
-          minutesInput,
-          secondsInput
-        );
-      });
-
-      saveAllData();
-
-      let resultMessage =
-        items.length + "件の集結カードを追加しました！";
-
-      if (expired) {
-        resultMessage +=
-          "\n" + expired +
-          "件は時間切れのためスキップしました。";
-      }
-
-      message(resultMessage.replace(/\n/g, " "));
-      showImport(false);
-
-      window.alert(resultMessage);
-
-      list.scrollIntoView({
-        behavior: "smooth",
-        block: "start"
-      });
-
-    } catch (error) {
-      console.error(error);
-
-      const errorMessage =
-        "取り込みエラー：" + error.message;
-
-      message(errorMessage);
-      window.alert(errorMessage);
-
-    } finally {
-      importing = false;
     }
-  });
+  );
 
-  showImport(false);
+  /*
+   * 初期状態
+   */
+  setImportEnabled(false);
+
 })();
-
