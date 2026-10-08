@@ -4644,3 +4644,119 @@ setInterval(
   );
 })();
 
+
+/* OCR取り込みボタン修正 */
+
+document.getElementById("ocrImportButton")
+  ?.addEventListener("click", (event) => {
+    event.stopImmediatePropagation();
+
+    try {
+      const captureInput =
+        document.getElementById("ocrCaptureTime");
+
+      const candidates =
+        document.querySelectorAll(".ocr-candidate");
+
+      const capturedAt =
+        new Date(captureInput.value).getTime();
+
+      if (!Number.isFinite(capturedAt)) {
+        alert("スクショの撮影時刻を確認してください。");
+        return;
+      }
+
+      const elapsed =
+        (Date.now() - capturedAt) / 1000;
+
+      if (elapsed < -2) {
+        alert("撮影時刻が未来になっています。");
+        return;
+      }
+
+      const items = [];
+
+      for (const candidate of candidates) {
+        const input =
+          candidate.querySelector("[data-ocr-time]");
+
+        const mode =
+          candidate.querySelector("[data-ocr-mode]");
+
+        const match = input?.value.match(
+          /^(\d{1,2}):([0-5]\d):([0-5]\d)$/
+        );
+
+        if (!match) {
+          alert("残り時間の入力を確認してください。");
+          return;
+        }
+
+        const seconds =
+          Number(match[1]) * 3600 +
+          Number(match[2]) * 60 +
+          Number(match[3]);
+
+        const remaining = seconds - elapsed;
+
+        if (remaining <= 0) {
+          alert(
+            "スクショ撮影時点から時間が経過し、" +
+            "集結の残り時間が終了しています。"
+          );
+          return;
+        }
+
+        items.push({
+          remaining,
+          mode: mode.value
+        });
+      }
+
+      if (!items.length) {
+        alert("取り込む集結がありません。");
+        return;
+      }
+
+      const list =
+        document.getElementById("rallyCardList");
+
+      if (!list) {
+        throw new Error("集結カード一覧が見つかりません。");
+      }
+
+      items.forEach((item, index) => {
+        const card = createRallyCard();
+
+        card.querySelector(
+          ".rally-name-input"
+        ).value = "OCR集結 " + (index + 1);
+
+        card.querySelector(
+          '[data-card-mode="' + item.mode + '"]'
+        ).click();
+
+        setMinuteSecondInputs(
+          item.remaining,
+          card.querySelector(".remaining-minutes-input"),
+          card.querySelector(".remaining-seconds-input")
+        );
+      });
+
+      saveAllData();
+
+      alert(
+        items.length +
+        "件の集結カードを追加しました！"
+      );
+
+      list.scrollIntoView({
+        behavior: "smooth",
+        block: "start"
+      });
+
+    } catch (error) {
+      console.error(error);
+      alert("取り込みエラー：" + error.message);
+    }
+  }, true);
