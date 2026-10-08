@@ -1,12 +1,10 @@
+
 /* =========================================================
    WOS 行軍タイミングツール
-   style.css Ver.3.0
+   style.css Ver.3.1
 ========================================================= */
 
-
-/* =========================================================
-   基本設定
-========================================================= */
+/* 基本設定 */
 
 * {
   box-sizing: border-box;
@@ -113,10 +111,7 @@ select {
   display: none !important;
 }
 
-
-/* =========================================================
-   アプリ全体
-========================================================= */
+/* アプリ全体 */
 
 .app-container {
   width: 100%;
@@ -129,10 +124,7 @@ select {
     calc(110px + env(safe-area-inset-bottom));
 }
 
-
-/* =========================================================
-   ヘッダー
-========================================================= */
+/* ヘッダー */
 
 .app-header {
   display: grid;
@@ -201,10 +193,7 @@ select {
   font-variant-numeric: tabular-nums;
 }
 
-
-/* =========================================================
-   JST / UTC切り替え
-========================================================= */
+/* JST / UTC切り替え */
 
 .timezone-buttons {
   display: grid;
@@ -258,10 +247,7 @@ select {
   transform: scale(0.96);
 }
 
-
-/* =========================================================
-   モード切り替え
-========================================================= */
+/* モード切り替え */
 
 .mode-tabs {
   display: grid;
@@ -316,10 +302,7 @@ select {
   transform: scale(0.98);
 }
 
-
-/* =========================================================
-   共通パネル
-========================================================= */
+/* 共通パネル */
 
 .panel {
   margin-bottom: 18px;
@@ -361,10 +344,7 @@ select {
   line-height: 1.55;
 }
 
-
-/* =========================================================
-   設定ブロック
-========================================================= */
+/* 設定ブロック */
 
 .setting-block {
   margin-top: 18px;
@@ -412,10 +392,7 @@ select {
   margin-top: 15px;
 }
 
-
-/* =========================================================
-   セグメントボタン
-========================================================= */
+/* セグメントボタン */
 
 .segmented-control {
   display: grid;
@@ -460,10 +437,7 @@ select {
   transform: scale(0.98);
 }
 
-
-/* =========================================================
-   フォーム共通
-========================================================= */
+/* フォーム共通 */
 
 .form-row {
   display: grid;
@@ -498,6 +472,8 @@ select {
   transition:
     border-color 0.15s ease,
     box-shadow 0.15s ease,
+
+   
     background 0.15s ease;
 }
 
@@ -576,10 +552,7 @@ input::placeholder {
   line-height: 1.6;
 }
 
-
-/* =========================================================
-   分・秒入力
-========================================================= */
+/* 分・秒入力 */
 
 .minute-second-group {
   display: grid;
@@ -614,10 +587,7 @@ input::placeholder {
   width: 105px;
 }
 
-
-/* =========================================================
-   座標入力
-========================================================= */
+/* 座標入力 */
 
 .coordinate-card {
   padding: 14px;
@@ -722,10 +692,7 @@ input::placeholder {
   color: var(--text);
 }
 
-
-/* =========================================================
-   ユキヒョウ
-========================================================= */
+/* ユキヒョウ */
 
 .snow-leopard-block {
   padding: 17px;
@@ -854,10 +821,7 @@ input::placeholder {
   font-variant-numeric: tabular-nums;
 }
 
-
-/* =========================================================
-   共通ボタン
-========================================================= */
+/* 共通ボタン */
 
 .primary-button,
 .secondary-button,
@@ -963,10 +927,7 @@ button:focus-visible {
   outline-offset: 2px;
 }
 
-
-/* =========================================================
-   ツールバー
-========================================================= */
+/* ツールバー */
 
 .toolbar {
   display: flex;
@@ -976,10 +937,7 @@ button:focus-visible {
   margin-bottom: 17px;
 }
 
-
-/* =========================================================
-   集結カード
-========================================================= */
+/* 集結カード */
 
 .rally-card-list {
   display: grid;
@@ -1047,9 +1005,7 @@ button:focus-visible {
 }
 
 
-/* =========================================================
-   集結カード上部
-========================================================= */
+/* 集結カード上部 */
 
 .delete-rally-button {
   position: absolute;
@@ -1061,7 +1017,6 @@ button:focus-visible {
   height: 43px;
 
   padding: 0;
-
   border: 0;
 
   background: transparent;
@@ -1084,7 +1039,6 @@ button:focus-visible {
 
 .rally-name-input {
   min-width: 0;
-
   text-align: left;
 
   font-size: 18px;
@@ -1093,26 +1047,18 @@ button:focus-visible {
 
 .rally-card-number {
   min-width: 38px;
-
   padding: 7px 9px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.12);
-
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 9px;
 
-  background:
-    rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.11);
 
   text-align: center;
   font-weight: 900;
 }
 
-
-/* =========================================================
-   相手行軍時間
-========================================================= */
+/* 相手行軍時間 */
 
 .enemy-march-setting-block {
   margin-bottom: 13px;
@@ -1130,18 +1076,14 @@ button:focus-visible {
   margin-bottom: 16px;
   padding: 14px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.08);
-
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 12px;
 
   background: rgba(0, 0, 0, 0.13);
 }
 
 .enemy-coordinate-settings {
-  border-color:
-    rgba(77, 145, 232, 0.26);
+  border-color: rgba(77, 145, 232, 0.26);
 
   background:
     linear-gradient(
@@ -1178,10 +1120,7 @@ button:focus-visible {
   font-size: 21px;
 }
 
-
-/* =========================================================
-   集結中・行軍中
-========================================================= */
+/* 集結中・行軍中 */
 
 .card-section {
   margin-bottom: 14px;
@@ -1192,14 +1131,10 @@ button:focus-visible {
   grid-template-columns: 1fr 1fr;
 
   width: 230px;
-
   padding: 4px;
   gap: 5px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.12);
-
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 10px;
 
   background: rgba(0, 0, 0, 0.19);
@@ -1218,25 +1153,17 @@ button:focus-visible {
 }
 
 .card-mode-button.active {
-  background:
-    rgba(255, 255, 255, 0.16);
-
+  background: rgba(255, 255, 255, 0.16);
   color: #ffffff;
 }
 
-
-/* =========================================================
-   計算結果
-========================================================= */
+/* 計算結果 */
 
 .rally-result-panel,
 .arrival-result-card {
   padding: 8px 13px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.08);
-
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 11px;
 
   background: rgba(0, 0, 0, 0.24);
@@ -1251,9 +1178,7 @@ button:focus-visible {
 
   min-height: 48px;
 
-  border-bottom:
-    1px solid
-    rgba(255, 255, 255, 0.08);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 .result-line:last-child {
@@ -1282,14 +1207,10 @@ button:focus-visible {
 .main-result-line strong {
   padding: 7px 10px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.13);
-
+  border: 1px solid rgba(255, 255, 255, 0.13);
   border-radius: 8px;
 
-  background:
-    rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.12);
 
   font-size: 23px;
   font-weight: 900;
@@ -1324,22 +1245,15 @@ button:focus-visible {
   color: var(--danger);
 }
 
-
-/* =========================================================
-   加速計算
-========================================================= */
+/* 加速計算 */
 
 .acceleration-details {
   margin-top: 13px;
 
-  border:
-    1px solid
-    rgba(242, 202, 99, 0.25);
-
+  border: 1px solid rgba(242, 202, 99, 0.25);
   border-radius: 11px;
 
-  background:
-    rgba(37, 31, 13, 0.3);
+  background: rgba(37, 31, 13, 0.3);
 }
 
 .acceleration-details summary {
@@ -1369,10 +1283,7 @@ button:focus-visible {
   margin-top: 12px;
   padding: 0 11px;
 
-  border:
-    1px solid
-    rgba(255, 255, 255, 0.08);
-
+  border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 9px;
 
   background: rgba(0, 0, 0, 0.18);
@@ -1388,7 +1299,6 @@ button:focus-visible {
 
 .acceleration-option {
   min-width: 0;
-
   padding: 12px 9px;
 
   border: 1px solid var(--border);
@@ -1423,23 +1333,17 @@ button:focus-visible {
 }
 
 .acceleration-option.success {
-  border-color:
-    rgba(126, 211, 107, 0.55);
-
+  border-color: rgba(126, 211, 107, 0.55);
   background: var(--success-soft);
 }
 
 .acceleration-option.warning {
-  border-color:
-    rgba(242, 202, 99, 0.55);
-
+  border-color: rgba(242, 202, 99, 0.55);
   background: var(--warning-soft);
 }
 
 .acceleration-option.danger {
-  border-color:
-    rgba(237, 115, 115, 0.55);
-
+  border-color: rgba(237, 115, 115, 0.55);
   background: var(--danger-soft);
 }
 
@@ -1453,10 +1357,7 @@ button:focus-visible {
   margin-top: 13px;
   padding: 12px;
 
-  border:
-    1px solid
-    rgba(183, 139, 238, 0.42);
-
+  border: 1px solid rgba(183, 139, 238, 0.42);
   border-radius: 10px;
 
   background: var(--purple-soft);
@@ -1471,18 +1372,12 @@ button:focus-visible {
   text-align: right;
 }
 
-
-/* =========================================================
-   多段分析
-========================================================= */
+/* 多段分析 */
 
 .empty-result {
   padding: 22px 15px;
 
-  border:
-    1px dashed
-    var(--border-light);
-
+  border: 1px dashed var(--border-light);
   border-radius: 12px;
 
   color: var(--text-muted);
@@ -1515,30 +1410,21 @@ button:focus-visible {
 }
 
 .gap-analysis-item.good {
-  border-color:
-    rgba(126, 211, 107, 0.5);
-
+  border-color: rgba(126, 211, 107, 0.5);
   background: var(--success-soft);
 }
 
 .gap-analysis-item.medium {
-  border-color:
-    rgba(242, 202, 99, 0.5);
-
+  border-color: rgba(242, 202, 99, 0.5);
   background: var(--warning-soft);
 }
 
 .gap-analysis-item.bad {
-  border-color:
-    rgba(237, 115, 115, 0.5);
-
+  border-color: rgba(237, 115, 115, 0.5);
   background: var(--danger-soft);
 }
 
-
-/* =========================================================
-   指定時刻着弾
-========================================================= */
+/* 指定時刻着弾 */
 
 .target-time-grid {
   display: grid;
@@ -1584,21 +1470,15 @@ button:focus-visible {
 }
 
 
-/* =========================================================
-   データ管理
-========================================================= */
+/* データ管理 */
 
 .data-buttons {
   display: flex;
   flex-wrap: wrap;
-
   gap: 9px;
 }
 
-
-/* =========================================================
-   通知オーバーレイ
-========================================================= */
+/* 通知オーバーレイ */
 
 .alert-overlay {
   position: fixed;
@@ -1610,52 +1490,34 @@ button:focus-visible {
   justify-content: center;
 
   padding: 24px;
-
-  background:
-    rgba(0, 0, 0, 0.84);
+  background: rgba(0, 0, 0, 0.84);
 }
 
 .alert-overlay.show {
   display: flex;
-
-  animation:
-    alertBackgroundFlash
-    0.45s
-    infinite
-    alternate;
+  animation: alertBackgroundFlash 0.45s infinite alternate;
 }
 
 .alert-box {
   width: min(100%, 430px);
-
   padding: 28px 20px;
 
   border: 3px solid #ffffff;
   border-radius: 20px;
 
-  background:
-    linear-gradient(
-      145deg,
-      #d63535,
-      #a91717
-    );
-
+  background: linear-gradient(145deg, #d63535, #a91717);
   text-align: center;
 
-  box-shadow:
-    0 0 55px
-    rgba(255, 45, 45, 0.48);
+  box-shadow: 0 0 55px rgba(255, 45, 45, 0.48);
 }
 
 .alert-icon {
   margin-bottom: 5px;
-
   font-size: 45px;
 }
 
 .alert-title {
   margin-bottom: 6px;
-
   font-size: 44px;
   font-weight: 900;
 }
@@ -1664,9 +1526,7 @@ button:focus-visible {
   min-height: 23px;
   margin-bottom: 7px;
 
-  color:
-    rgba(255, 255, 255, 0.83);
-
+  color: rgba(255, 255, 255, 0.83);
   font-size: 17px;
   font-weight: 800;
 }
@@ -1682,37 +1542,27 @@ button:focus-visible {
 
 #closeAlertButton {
   min-width: 140px;
-
   border: 0;
 
   background: #ffffff;
   color: #171717;
 }
 
-
-/* =========================================================
-   アニメーション
-========================================================= */
+/* アニメーション */
 
 @keyframes alertBackgroundFlash {
   from {
-    background:
-      rgba(105, 0, 0, 0.74);
+    background: rgba(105, 0, 0, 0.74);
   }
 
   to {
-    background:
-      rgba(255, 0, 0, 0.91);
+    background: rgba(255, 0, 0, 0.91);
   }
 }
 
-
-/* =========================================================
-   タブレット
-========================================================= */
+/* タブレット */
 
 @media (max-width: 720px) {
-
   .app-header {
     grid-template-columns: 1fr;
     align-items: stretch;
@@ -1731,13 +1581,9 @@ button:focus-visible {
   }
 }
 
-
-/* =========================================================
-   スマホ
-========================================================= */
+/* スマホ */
 
 @media (max-width: 560px) {
-
   .app-container {
     padding:
       20px
@@ -1756,7 +1602,6 @@ button:focus-visible {
   .mode-tab {
     padding-left: 7px;
     padding-right: 7px;
-
     font-size: 14px;
   }
 
@@ -1771,7 +1616,6 @@ button:focus-visible {
 
   .form-row {
     grid-template-columns: 1fr;
-
     gap: 7px;
     margin-bottom: 17px;
   }
@@ -1855,7 +1699,6 @@ button:focus-visible {
 
   .result-line {
     grid-template-columns: 1fr;
-
     gap: 3px;
     padding: 8px 0;
   }
@@ -1878,7 +1721,6 @@ button:focus-visible {
 
     align-items: center;
     gap: 5px 12px;
-
     text-align: left;
   }
 
@@ -1906,7 +1748,6 @@ button:focus-visible {
   .target-time-grid input {
     padding-left: 5px;
     padding-right: 5px;
-
     font-size: 19px;
   }
 
@@ -1928,13 +1769,9 @@ button:focus-visible {
   }
 }
 
-
-/* =========================================================
-   小さいスマホ
-========================================================= */
+/* 小さいスマホ */
 
 @media (max-width: 390px) {
-
   .app-container {
     padding-left: 9px;
     padding-right: 9px;
@@ -2006,5 +1843,155 @@ button:focus-visible {
   .enemy-coordinate-result-card
   .coordinate-result-main strong {
     text-align: right;
+  }
+}
+
+/* =========================================================
+   スクショOCR専用
+========================================================= */
+
+.ocr-panel {
+  border-color: rgba(77, 145, 232, 0.4);
+
+  background:
+    linear-gradient(
+      145deg,
+      rgba(32, 48, 71, 0.96),
+      rgba(19, 24, 34, 0.98)
+    );
+}
+
+.ocr-panel > label {
+  display: block;
+  margin: 15px 0 7px;
+
+  color: var(--text-sub);
+  font-size: 14px;
+  font-weight: 800;
+}
+
+#ocrImage {
+  width: 100%;
+  padding: 10px;
+
+  border: 1px dashed var(--border-light);
+  background: rgba(0, 0, 0, 0.2);
+}
+
+#ocrCaptureTime {
+  width: 100%;
+  min-width: 0;
+  color-scheme: dark;
+}
+
+#ocrReadButton,
+#ocrImportButton {
+  width: 100%;
+  margin-top: 14px;
+}
+
+#ocrStatus {
+  margin: 12px 0;
+  overflow-wrap: anywhere;
+}
+
+#ocrCandidates {
+  display: grid;
+  gap: 10px;
+  margin-top: 13px;
+}
+
+.ocr-candidate {
+  padding: 13px;
+
+  border: 1px solid var(--border);
+  border-radius: 11px;
+
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.ocr-candidate label {
+  display: block;
+  margin-bottom: 6px;
+
+  color: var(--text-sub);
+  font-size: 13px;
+  font-weight: 800;
+}
+
+.ocr-candidate input,
+.ocr-candidate select {
+  width: 100%;
+  min-width: 0;
+}
+
+.ocr-candidate-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  gap: 10px;
+}
+
+.ocr-debug {
+  margin-top: 14px;
+  padding: 11px;
+
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.ocr-debug summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 13px;
+}
+
+#ocrRaw {
+  overflow-x: auto;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+
+  color: var(--text-sub);
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+/* iPhone向け追加調整 */
+
+@media (max-width: 560px) {
+  .ocr-panel {
+    padding: 14px;
+  }
+
+  .ocr-candidate-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ocr-panel input,
+  .ocr-panel select {
+    font-size: 16px;
+  }
+
+  .ocr-panel .panel-heading {
+    margin-bottom: 10px;
+  }
+
+  .ocr-panel .panel-heading h2 {
+    font-size: 19px;
+  }
+
+  .rally-card-header {
+    gap: 7px;
+  }
+
+  .rally-name-input {
+    font-size: 16px;
+  }
+
+  .coordinate-result-details {
+    gap: 8px 13px;
+  }
+
+  .result-line strong {
+    overflow-wrap: anywhere;
   }
 }
