@@ -4244,64 +4244,67 @@ setInterval(
     });
   }
 
-  function createCrop(image, area) {
-    const canvas =
-      document.createElement("canvas");
+  
+function createCrop(image, area) {
+  const canvas = document.createElement("canvas");
 
-    const sourceX = Math.floor(
-      image.width * area.x
-    );
+  const sx = Math.floor(image.width * area.x);
+  const sy = Math.floor(image.height * area.y);
+  const sw = Math.floor(image.width * area.w);
+  const sh = Math.floor(image.height * area.h);
 
-    const sourceY = Math.floor(
-      image.height * area.y
-    );
+  const scale = 4;
 
-    const sourceWidth = Math.floor(
-      image.width * area.w
-    );
+  canvas.width = sw * scale;
+  canvas.height = sh * scale;
 
-    const sourceHeight = Math.floor(
-      image.height * area.h
-    );
+  const ctx = canvas.getContext("2d", {
+    willReadFrequently: true
+  });
 
-    canvas.width =
-      sourceWidth * 2;
-
-    canvas.height =
-      sourceHeight * 2;
-
-    const context =
-      canvas.getContext("2d");
-
-    if (!context) {
-      throw new Error(
-        "画像の処理に失敗しました。"
-      );
-    }
-
-    context.fillStyle = "#ffffff";
-
-    context.fillRect(
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    context.drawImage(
-      image,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0,
-      0,
-      canvas.width,
-      canvas.height
-    );
-
-    return canvas;
+  if (!ctx) {
+    throw new Error("画像を処理できませんでした。");
   }
+
+  ctx.drawImage(
+    image,
+    sx, sy, sw, sh,
+    0, 0, canvas.width, canvas.height
+  );
+
+  const imageData = ctx.getImageData(
+    0, 0, canvas.width, canvas.height
+  );
+
+  const pixels = imageData.data;
+
+  // 赤・青の背景に共通する白い文字を抽出
+  for (let i = 0; i < pixels.length; i += 4) {
+    const r = pixels[i];
+    const g = pixels[i + 1];
+    const b = pixels[i + 2];
+
+    const brightness = Math.max(r, g, b);
+    const minimum = Math.min(r, g, b);
+
+    const isWhiteText =
+      brightness >= 175 &&
+      minimum >= 145 &&
+      brightness - minimum < 75;
+
+    const value = isWhiteText ? 0 : 255;
+
+    pixels[i] = value;
+    pixels[i + 1] = value;
+    pixels[i + 2] = value;
+    pixels[i + 3] = 255;
+  }
+
+  ctx.putImageData(imageData, 0, 0);
+
+  return canvas;
+}
+
 
   /*
    * 認識できたものだけカードを表示する。
