@@ -1,1 +1,496 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport"
+      content="width=device-width,initial-scale=1">
+<title>WOS スクショOCRテスト</title>
+
+<style>
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  padding: 18px 14px 60px;
+  background: #0c0d10;
+  color: #f5f6f8;
+  font-family: -apple-system, sans-serif;
+}
+
+main {
+  max-width: 700px;
+  margin: auto;
+}
+
+h1 { font-size: 25px; }
+
+.panel {
+  background: #191c22;
+  border: 1px solid #343842;
+  border-radius: 16px;
+  padding: 17px;
+  margin: 16px 0;
+}
+
+p {
+  line-height: 1.6;
+}
+
+input, button {
+  font: inherit;
+}
+
+input[type=file] {
+  width: 100%;
+}
+
+button {
+  width: 100%;
+  padding: 15px;
+  border: 0;
+  border-radius: 10px;
+  background: #4d91e8;
+  color: white;
+  font-weight: bold;
+}
+
+button:disabled {
+  opacity: .45;
+}
+
+img {
+  display: block;
+  width: 100%;
+  border-radius: 9px;
+  margin-top: 12px;
+}
+
+img[hidden] {
+  display: none;
+}
+
+.time {
+  font-size: 23px;
+  color: #91c4ff;
+  font-weight: 800;
+}
+
+.muted {
+  color: #bdc2cc;
+  font-size: 14px;
+}
+
+.warning {
+  color: #f2ca63;
+}
+
+.result-item {
+  padding: 12px;
+  margin: 9px 0;
+  background: #111317;
+  border-radius: 9px;
+}
+
+pre {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  background: #111317;
+  padding: 12px;
+  border-radius: 9px;
+  font-size: 13px;
+}
+
+progress {
+  width: 100%;
+  height: 12px;
+}
+
+canvas {
+  display: none;
+}
+</style>
+</head>
+
+<body>
+<main>
+
+<h1>📸 WOS スクショOCRテスト</h1>
+
+<p class="muted">
+スクショから集結残り時間を読み取ります。
+画像は外部AIへ送信しません。
+</p>
+
+<section class="panel">
+  <h2>① スクショ選択</h2>
+
+  <input
+    id="photo"
+    type="file"
+    accept="image/*"
+  >
+
+  <img id="preview" hidden>
+
+  <p id="photoTime" class="muted">
+    撮影時刻：未取得
+  </p>
+</section>
+
+<section class="panel">
+  <h2>② 画像認識</h2>
+
+  <button id="run" disabled>
+    画像認識を開始
+  </button>
+
+  <p id="status" class="muted">
+    スクショを選択してください。
+  </p>
+
+  <progress
+    id="progress"
+    value="0"
+    max="100"
+  ></progress>
+
+  <p class="muted">
+    初回はOCRデータの読み込みに
+    時間がかかる場合があります。
+  </p>
+</section>
+
+<section class="panel">
+  <h2>③ 認識した時間</h2>
+
+  <div id="times">
+    まだ認識していません。
+  </div>
+</section>
+
+<section class="panel">
+  <h2>④ OCRが読み取った全文</h2>
+
+  <pre id="raw">未実行</pre>
+
+  <p class="warning">
+    認識した数字は誤っている可能性があります。
+    PvPで使用する前に必ず確認してください。
+  </p>
+</section>
+
+<canvas id="canvas"></canvas>
+
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js"></script>
+
+<script>
+"use strict";
+
+const $ = id =>
+  document.getElementById(id);
+
+const photo = $("photo");
+const preview = $("preview");
+const photoTime = $("photoTime");
+const run = $("run");
+const status = $("status");
+const progress = $("progress");
+const times = $("times");
+const raw = $("raw");
+const canvas = $("canvas");
+
+let selectedFile = null;
+let previewUrl = null;
+let worker = null;
+
+function formatTime(date) {
+  return date.toLocaleString("ja-JP", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: false
+  });
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      resolve(img);
+    };
+
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("画像を開けませんでした"));
+    };
+
+    img.src = url;
+  });
+}
+
+function makeOCRImage(img) {
+  const ctx = canvas.getContext("2d", {
+    willReadFrequently: true
+  });
+
+  // iPhoneの負荷を抑えるため
+  // 最大幅を2400pxに制限する
+  const scale = Math.min(
+    2,
+    2400 / img.naturalWidth
+  );
+
+  canvas.width = Math.round(
+    img.naturalWidth * scale
+  );
+
+  canvas.height = Math.round(
+    img.naturalHeight * scale
+  );
+
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(
+    0, 0,
+    canvas.width,
+    canvas.height
+  );
+
+  ctx.drawImage(
+    img,
+    0, 0,
+    canvas.width,
+    canvas.height
+  );
+
+  const image = ctx.getImageData(
+    0, 0,
+    canvas.width,
+    canvas.height
+  );
+
+  const data = image.data;
+
+  // 明暗を強調して文字認識しやすくする
+  for (let i = 0; i < data.length; i += 4) {
+    const r = data[i];
+    const g = data[i + 1];
+    const b = data[i + 2];
+
+    const gray =
+      r * 0.299 +
+      g * 0.587 +
+      b * 0.114;
+
+    const value = gray > 125 ? 255 : 0;
+
+    data[i] = value;
+    data[i + 1] = value;
+    data[i + 2] = value;
+  }
+
+  ctx.putImageData(image, 0, 0);
+
+  return canvas;
+}
+
+function extractTimes(text) {
+  // 全角数字やコロンも正規化する
+  const normalized = text
+    .replace(/[０-９]/g, char =>
+      String.fromCharCode(
+        char.charCodeAt(0) - 65248
+      )
+    )
+    .replace(/[：﹕]/g, ":");
+
+  // HH:MM:SS / MM:SS に対応
+  const pattern =
+    /(?:^|[^\d:])((?:\d{1,2}:)?[0-5]?\d:[0-5]\d)(?![\d:])/gm;
+
+  const matches = [
+    ...normalized.matchAll(pattern)
+  ];
+
+  return matches.map(match => match[1]);
+}
+
+photo.addEventListener("change", () => {
+  selectedFile = photo.files?.[0] || null;
+
+  if (previewUrl) {
+    URL.revokeObjectURL(previewUrl);
+    previewUrl = null;
+  }
+
+  times.textContent = "まだ認識していません。";
+  raw.textContent = "未実行";
+  progress.value = 0;
+
+  if (!selectedFile) {
+    preview.hidden = true;
+    run.disabled = true;
+    status.textContent =
+      "スクショを選択してください。";
+    photoTime.textContent =
+      "撮影時刻：未取得";
+    return;
+  }
+
+  previewUrl = URL.createObjectURL(
+    selectedFile
+  );
+
+  preview.src = previewUrl;
+  preview.hidden = false;
+  run.disabled = false;
+
+  if (selectedFile.lastModified > 0) {
+    photoTime.textContent =
+      "ファイル最終更新日時：" +
+      formatTime(
+        new Date(selectedFile.lastModified)
+      ) +
+      "（撮影時刻か要確認）";
+  } else {
+    photoTime.textContent =
+      "撮影時刻：取得できません";
+  }
+
+  status.textContent =
+    "画像を選択しました。認識を開始できます。";
+});
+
+run.addEventListener("click", async () => {
+  if (!selectedFile) return;
+
+  run.disabled = true;
+  progress.value = 0;
+  times.textContent = "認識中...";
+  raw.textContent = "認識中...";
+
+  try {
+    if (!window.Tesseract) {
+      throw new Error(
+        "OCRライブラリを読み込めませんでした"
+      );
+    }
+
+    status.textContent =
+      "画像を準備しています...";
+
+    const img = await loadImage(selectedFile);
+    const processed = makeOCRImage(img);
+
+    if (!worker) {
+      status.textContent =
+        "OCRエンジンを読み込み中...";
+
+      worker = await Tesseract.createWorker(
+        "eng",
+        1,
+        {
+          logger: message => {
+            if (message.status) {
+              status.textContent =
+                message.status;
+            }
+
+            if (
+              typeof message.progress ===
+              "number"
+            ) {
+              progress.value =
+                Math.round(
+                  message.progress * 100
+                );
+            }
+          }
+        }
+      );
+
+      await worker.setParameters({
+        tessedit_char_whitelist:
+          "0123456789:ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz ",
+        preserve_interword_spaces: "1"
+      });
+    }
+
+    status.textContent =
+      "文字を認識しています...";
+
+    const result =
+      await worker.recognize(processed);
+
+    const text =
+      result.data.text || "";
+
+    raw.textContent =
+      text || "文字を認識できませんでした。";
+
+    const found = extractTimes(text);
+
+    times.replaceChildren();
+
+    if (found.length === 0) {
+      times.textContent =
+        "時間を検出できませんでした。";
+    } else {
+      found.forEach((value, index) => {
+        const item =
+          document.createElement("div");
+
+        item.className = "result-item";
+
+        const label =
+          document.createElement("div");
+
+        label.className = "muted";
+        label.textContent =
+          "検出 " + (index + 1);
+
+        const time =
+          document.createElement("div");
+
+        time.className = "time";
+        time.textContent = value;
+
+        item.append(label, time);
+        times.appendChild(item);
+      });
+    }
+
+    status.textContent =
+      "認識完了：" +
+      found.length +
+      "件の時刻形式を検出しました。";
+
+    progress.value = 100;
+
+  } catch (error) {
+    status.textContent =
+      "エラー：" + error.message;
+
+    times.textContent =
+      "認識できませんでした。";
+
+    raw.textContent =
+      String(error);
+
+  } finally {
+    run.disabled = false;
+  }
+});
+</script>
+
+</body>
+</html>
+
