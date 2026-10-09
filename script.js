@@ -5134,13 +5134,10 @@ setInterval(
             capturedAt +
             seconds * 1000;
 
-          const remaining =
-            (deadline - Date.now()) /
-            1000;
-
-          if (remaining <= 0) {
+          
+          // 期限切れでも検証用に追加する
+          if (deadline <= Date.now()) {
             expiredCount++;
-            continue;
           }
 
           items.push({
@@ -5155,12 +5152,11 @@ setInterval(
 
         if (items.length === 0) {
           throw new Error(
-            "取り込める集結がありません。残り時間と撮影時刻を確認してください。"
+            "取り込める集結がありません。OCRの時間を確認してください。"
           );
         }
 
-        const list =
-          get("rallyCardList");
+        const list = get("rallyCardList");
 
         if (!list) {
           throw new Error(
@@ -5169,24 +5165,16 @@ setInterval(
         }
 
         for (const item of items) {
-          const card =
-            createRallyCard();
+          const card = createRallyCard();
 
           const nameInput =
-            card.querySelector(
-              ".rally-name-input"
-            );
+            card.querySelector(".rally-name-input");
 
           if (nameInput) {
             nameInput.value =
-              "OCR集結 " +
-              item.position;
+              "OCR集結 " + item.position;
           }
 
-          /*
-           * 先にモードを切り替える。
-           * その後に固定時刻を登録する。
-           */
           const modeButton =
             card.querySelector(
               '[data-card-mode="' +
@@ -5208,30 +5196,20 @@ setInterval(
               ".remaining-seconds-input"
             );
 
-          if (
-            !minutesInput ||
-            !secondsInput
-          ) {
+          if (!minutesInput || !secondsInput) {
             throw new Error(
-              "集結カードの時間入力欄が見つかりません。"
+              "集結カードの入力欄が見つかりません。"
             );
           }
 
-          /*
-           * 入力欄には取り込み時点の
-           * 残り時間を表示する。
-           *
-           * ただし計算時にはこの数字ではなく
-           * deadlineを基準にする。
-           */
-          const remaining =
-            Math.max(
-              0,
-              Math.ceil(
-                (item.deadline - Date.now()) /
-                1000
-              )
-            );
+          // 期限切れなら表示上は0秒
+          // 実際の終了時刻はdeadlineで固定
+          const remaining = Math.max(
+            0,
+            Math.ceil(
+              (item.deadline - Date.now()) / 1000
+            )
+          );
 
           setMinuteSecondInputs(
             remaining,
@@ -5239,13 +5217,7 @@ setInterval(
             secondsInput
           );
 
-          /*
-           * 固定時刻をカードへ登録。
-           */
-          setDeadline(
-            card,
-            item.deadline
-          );
+          setDeadline(card, item.deadline);
         }
 
         saveAllData();
@@ -5259,7 +5231,7 @@ setInterval(
           message +=
             "\n" +
             expiredCount +
-            "件は時間切れのためスキップしました。";
+            "件は期限切れですが、検証用に追加しました。";
         }
 
         setStatus(
@@ -5267,7 +5239,6 @@ setInterval(
         );
 
         setImportEnabled(false);
-
         window.alert(message);
 
         list.scrollIntoView({
@@ -5291,25 +5262,18 @@ setInterval(
     }
   );
 
-  /* =====================================================
-     初期状態
-  ===================================================== */
-
   setImportEnabled(false);
 
   console.info(
-    "WOS OCR Ver.3.6: " +
-    "集結終了時刻固定機能 有効"
+    "WOS OCR Ver.3.9: 期限切れ集結の追加対応"
   );
 
 })();
 
 
-
 /* =========================================================
-   Ver.3.8
-   相手着弾・自分出撃の時刻固定
-   Ver.3.7以降の末尾コードと置き換え
+   Ver.3.9
+   固定時刻で着弾・出撃を計算
 ========================================================= */
 
 (() => {
@@ -5382,13 +5346,10 @@ setInterval(
     const march =
       card.dataset.cardMode === "march";
 
-    /*
-     * 初回だけ現在時刻を使う。
-     * OCRカードなら撮影時刻から算出済みの
-     * 固定時刻をそのまま使用する。
-     */
+    // OCRの固定時刻を優先
     let base = getFixedTime(card);
 
+    // 手動カードは初回計算時に固定
     if (base === null) {
       base =
         Date.now() + remaining * 1000;
@@ -5399,10 +5360,8 @@ setInterval(
       card.dataset.ocrFixed = "true";
     }
 
-    /*
-     * 集結中：baseは相手の出発時刻
-     * 行軍中：baseは相手の着弾時刻
-     */
+    // 集結中ならbaseは集結終了時刻
+    // 行軍中ならbaseは着弾時刻
     const enemyDeparture =
       march
         ? base - enemyMarch * 1000
@@ -5421,10 +5380,6 @@ setInterval(
       myMarch * 1000 +
       correction * 1000;
 
-    /*
-     * 結果を直接保存する。
-     * Date.now()を再計算に使わない。
-     */
     card.dataset.enemyDeparture =
       String(enemyDeparture);
 
@@ -5452,10 +5407,6 @@ setInterval(
     saveAllData();
   }
 
-  /*
-   * ボタンのイベントを先に受け取り、
-   * 旧計算処理が二重実行されないようにする。
-   */
   list.addEventListener(
     "click",
     event => {
@@ -5483,6 +5434,6 @@ setInterval(
   );
 
   console.info(
-    "WOS Ver.3.8: 固定時刻計算 有効"
+    "WOS Ver.3.9: 期限切れ・固定時刻計算 有効"
   );
 })();
