@@ -5303,3 +5303,76 @@ setInterval(
   );
 
 })();
+
+
+/* =========================================================
+   Ver.3.7 追加修正
+   「この瞬間で計算」の時刻固定
+
+   ・手入力カードも初回計算で時刻固定
+   ・OCRカードの固定機能は維持
+   ・再計算しても相手の着弾時刻は変えない
+   ・手動で残り時間を変更すると固定解除
+   ・距離計算式は変更しない
+========================================================= */
+
+(() => {
+  "use strict";
+
+  const previousCalculateRallyCard =
+    calculateRallyCard;
+
+  calculateRallyCard = function(card) {
+    const fixedValue =
+      card.dataset.ocrDeadline;
+
+    // すでに固定済みなら、
+    // Ver.3.6の固定計算をそのまま使用。
+    if (
+      fixedValue !== undefined &&
+      fixedValue !== "" &&
+      Number.isFinite(Number(fixedValue))
+    ) {
+      previousCalculateRallyCard(card);
+      return;
+    }
+
+    // 初回は従来どおり計算する。
+    previousCalculateRallyCard(card);
+
+    // 計算成功時だけ基準時刻を固定する。
+    const key =
+      card.dataset.cardMode === "march"
+        ? "enemyArrival"
+        : "enemyDeparture";
+
+    const value = card.dataset[key];
+
+    if (
+      value === undefined ||
+      value === ""
+    ) {
+      return;
+    }
+
+    const timestamp = Number(value);
+
+    if (!Number.isFinite(timestamp)) {
+      return;
+    }
+
+    // 集結中なら相手の出発予定時刻、
+    // 行軍中なら相手の着弾予定時刻を固定。
+    card.dataset.ocrDeadline =
+      String(timestamp);
+
+    card.dataset.ocrFixed = "true";
+
+    // Ver.3.6の保存処理を利用。
+    saveAllData();
+  };
+
+  console.info(
+    "WOS Ver.3.7: 再計算時刻固定 有効"
+  );
+})();
