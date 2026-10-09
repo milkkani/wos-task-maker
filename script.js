@@ -5135,7 +5135,8 @@ setInterval(
             seconds * 1000;
 
           
-          // 期限切れでも検証用に追加する
+    
+          // 期限切れでもOCR集結を取り込む
           if (deadline <= Date.now()) {
             expiredCount++;
           }
@@ -5143,6 +5144,8 @@ setInterval(
           items.push({
             position: index + 1,
             deadline,
+            capturedAt,
+            ocrSeconds: seconds,
             mode:
               modeInput?.value === "march"
                 ? "march"
@@ -5152,7 +5155,7 @@ setInterval(
 
         if (items.length === 0) {
           throw new Error(
-            "取り込める集結がありません。OCRの時間を確認してください。"
+            "取り込める集結がありません。OCRの認識結果を確認してください。"
           );
         }
 
@@ -5198,40 +5201,85 @@ setInterval(
 
           if (!minutesInput || !secondsInput) {
             throw new Error(
-              "集結カードの入力欄が見つかりません。"
+              "集結カードの時間入力欄が見つかりません。"
             );
           }
 
-          // 期限切れなら表示上は0秒
-          // 実際の終了時刻はdeadlineで固定
-          const remaining = Math.max(
-            0,
-            Math.ceil(
-              (item.deadline - Date.now()) / 1000
-            )
-          );
-
+          // OCRで読んだ撮影時点の残り時間を保持
+          // 期限切れでも0秒にしない
           setMinuteSecondInputs(
-            remaining,
+            item.ocrSeconds,
             minutesInput,
             secondsInput
           );
 
+          // 計算基準の絶対時刻を固定
           setDeadline(card, item.deadline);
+
+          card.dataset.ocrCapturedAt =
+            String(item.capturedAt);
+
+          card.dataset.ocrOriginalSeconds =
+            String(item.ocrSeconds);
+
+          // 以前の計算結果があれば消す
+          card.dataset.enemyDeparture = "";
+          card.dataset.enemyArrival = "";
+          card.dataset.myDeparture = "";
+          card.dataset.myArrival = "";
+          card.dataset.actualDeparture = "";
+
+          // 撮影時刻と基準時刻を確認できる表示
+          let info = card.querySelector(
+            ".ocr-fixed-time-info"
+          );
+
+          if (!info) {
+            info = document.createElement("div");
+            info.className = "ocr-fixed-time-info";
+
+            info.style.cssText =
+              "padding:10px;margin:8px 0;" +
+              "border-radius:8px;" +
+              "background:rgba(80,140,255,.12);" +
+              "font-size:13px;line-height:1.7;";
+
+            card.prepend(info);
+          }
+
+          const timeText = timestamp =>
+            new Date(timestamp).toLocaleTimeString(
+              "ja-JP",
+              { hour12: false }
+            );
+
+          info.textContent =
+            "📸 撮影時刻：" +
+            timeText(item.capturedAt) +
+            " ｜ OCR残り：" +
+            Math.floor(item.ocrSeconds / 60) +
+            "分" +
+            (item.ocrSeconds % 60) +
+            "秒" +
+            " ｜ 固定基準：" +
+            timeText(item.deadline) +
+            (item.deadline <= Date.now()
+              ? " ｜ 期限切れ・検証可能"
+              : "");
         }
 
         saveAllData();
 
         let message =
           items.length +
-          "件の集結カードを追加しました！" +
-          "\n集結終了時刻は固定されています。";
+          "件のOCR集結を追加しました。" +
+          "\n撮影時刻とOCR残り時間を固定しました。";
 
         if (expiredCount > 0) {
           message +=
-            "\n" +
+            "\n期限切れ" +
             expiredCount +
-            "件は期限切れですが、検証用に追加しました。";
+            "件も計算できます。";
         }
 
         setStatus(
@@ -5265,15 +5313,15 @@ setInterval(
   setImportEnabled(false);
 
   console.info(
-    "WOS OCR Ver.3.9: 期限切れ集結の追加対応"
+    "WOS OCR Ver.4.0: 撮影時刻・残り時間保持"
   );
 
 })();
 
 
 /* =========================================================
-   Ver.3.9
-   固定時刻で着弾・出撃を計算
+   Ver.4.0
+   OCR撮影時刻に基づく固定計算
 ========================================================= */
 
 (() => {
@@ -5287,10 +5335,7 @@ setInterval(
   function getFixedTime(card) {
     const value = card.dataset.ocrDeadline;
 
-    if (
-      value === undefined ||
-      value === ""
-    ) {
+    if (value === undefined || value === "") {
       return null;
     }
 
@@ -5324,53 +5369,88 @@ setInterval(
     const correction =
       parseNumber(tapCorrectionInput.value);
 
+    const base = getFixedTime(card);
+
     if (
       !Number.isFinite(myMarch) ||
-      myMarch <= 0 ||
+      myMarch <= 0
+    ) {
+      setResultMessage(
+        card,
+        "自分の行軍時間を入力してください。",
+        "danger"
+      );
+      return;
+    }
+
+    if (
       !Number.isFinite(enemyMarch) ||
-      enemyMarch <= 0 ||
-      !Number.isFinite(remaining) ||
-      remaining < 0 ||
+      enemyMarch <= 0
+    ) {
+      setResultMessage(
+        card,
+        "相手の行軍時間を入力してください。",
+        "danger"
+      );
+      return;
+    }
+
+    if (
       !Number.isFinite(delay) ||
       delay < 0 ||
       !Number.isFinite(correction)
     ) {
       setResultMessage(
         card,
-        "行軍時間・残り時間・補正値を確認してください。",
+        "補正値を確認してください。",
         "danger"
       );
       return;
     }
 
-    const march =
-      card.dataset.cardMode === "march";
+    // OCRカードでは絶対時刻を優先する
+    let fixedBase = base;
 
-    // OCRの固定時刻を優先
-    let base = getFixedTime(card);
+    // 手動カードのみ初回に現在時刻を使用
+    if (fixedBase === null) {
+      if (
+        !Number.isFinite(remaining) ||
+        remaining < 0
+      ) {
+        setResultMessage(
+          card,
+          "残り時間を確認してください。",
+          "danger"
+        );
+        return;
+      }
 
-    // 手動カードは初回計算時に固定
-    if (base === null) {
-      base =
+      fixedBase =
         Date.now() + remaining * 1000;
 
       card.dataset.ocrDeadline =
-        String(base);
+        String(fixedBase);
 
       card.dataset.ocrFixed = "true";
     }
 
-    // 集結中ならbaseは集結終了時刻
-    // 行軍中ならbaseは着弾時刻
+    const march =
+      card.dataset.cardMode === "march";
+
+    // 集結中：
+    // 固定基準は相手の集結終了時刻
+    //
+    // 行軍中：
+    // 固定基準は相手の着弾時刻
     const enemyDeparture =
       march
-        ? base - enemyMarch * 1000
-        : base;
+        ? fixedBase - enemyMarch * 1000
+        : fixedBase;
 
     const enemyArrival =
       march
-        ? base
-        : base + enemyMarch * 1000;
+        ? fixedBase
+        : fixedBase + enemyMarch * 1000;
 
     const myArrival =
       enemyArrival + delay * 1000;
@@ -5379,6 +5459,10 @@ setInterval(
       myArrival -
       myMarch * 1000 +
       correction * 1000;
+
+    card.dataset.capturedTimestamp =
+      card.dataset.ocrCapturedAt ||
+      String(fixedBase);
 
     card.dataset.enemyDeparture =
       String(enemyDeparture);
@@ -5402,19 +5486,80 @@ setInterval(
 
     displayRallyCardResult(card);
     clearAccelerationResult(card);
+
+    // 期限切れの場合も結果は消さない
     updateCardCountdown(card);
+
+    // 計算基準を表示して検証可能にする
+    const info = card.querySelector(
+      ".ocr-fixed-time-info"
+    );
+
+    if (info) {
+      const format = timestamp =>
+        new Date(timestamp).toLocaleTimeString(
+          "ja-JP",
+          {
+            hour12: false,
+            hour: "2-digit",
+            minute: "2-digit",
+            second: "2-digit"
+          }
+        );
+
+      const originalSeconds = Number(
+        card.dataset.ocrOriginalSeconds
+      );
+
+      const capturedAt = Number(
+        card.dataset.ocrCapturedAt
+      );
+
+      let text = "";
+
+      if (
+        Number.isFinite(capturedAt) &&
+        capturedAt > 0
+      ) {
+        text +=
+          "📸 撮影：" +
+          format(capturedAt) +
+          " ｜ OCR残り：" +
+          Math.floor(originalSeconds / 60) +
+          "分" +
+          (originalSeconds % 60) +
+          "秒 ｜ ";
+      }
+
+      text +=
+        "固定基準：" +
+        format(fixedBase) +
+        " ｜ 着弾：" +
+        format(enemyArrival);
+
+      if (fixedBase <= Date.now()) {
+        text += " ｜ 期限切れ・検証用";
+      }
+
+      info.textContent = text;
+    }
 
     saveAllData();
   }
 
+  // 古い計算ボタン処理より先に実行する
   list.addEventListener(
     "click",
     event => {
-      const button = event.target.closest(
-        ".capture-calculate-button"
-      );
+      const button =
+        event.target.closest(
+          ".capture-calculate-button"
+        );
 
-      if (!button || !list.contains(button)) {
+      if (
+        !button ||
+        !list.contains(button)
+      ) {
         return;
       }
 
@@ -5434,6 +5579,6 @@ setInterval(
   );
 
   console.info(
-    "WOS Ver.3.9: 期限切れ・固定時刻計算 有効"
+    "WOS Ver.4.0: OCR絶対時刻固定計算 有効"
   );
 })();
