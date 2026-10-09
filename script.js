@@ -5305,74 +5305,184 @@ setInterval(
 })();
 
 
-/* =========================================================
-   Ver.3.7 追加修正
-   「この瞬間で計算」の時刻固定
 
-   ・手入力カードも初回計算で時刻固定
-   ・OCRカードの固定機能は維持
-   ・再計算しても相手の着弾時刻は変えない
-   ・手動で残り時間を変更すると固定解除
-   ・距離計算式は変更しない
+/* =========================================================
+   Ver.3.8
+   相手着弾・自分出撃の時刻固定
+   Ver.3.7以降の末尾コードと置き換え
 ========================================================= */
 
 (() => {
   "use strict";
 
-  const previousCalculateRallyCard =
-    calculateRallyCard;
+  const list =
+    document.getElementById("rallyCardList");
 
-  calculateRallyCard = function(card) {
-    const fixedValue =
-      card.dataset.ocrDeadline;
+  if (!list) return;
 
-    // すでに固定済みなら、
-    // Ver.3.6の固定計算をそのまま使用。
-    if (
-      fixedValue !== undefined &&
-      fixedValue !== "" &&
-      Number.isFinite(Number(fixedValue))
-    ) {
-      previousCalculateRallyCard(card);
-      return;
-    }
-
-    // 初回は従来どおり計算する。
-    previousCalculateRallyCard(card);
-
-    // 計算成功時だけ基準時刻を固定する。
-    const key =
-      card.dataset.cardMode === "march"
-        ? "enemyArrival"
-        : "enemyDeparture";
-
-    const value = card.dataset[key];
+  function getFixedTime(card) {
+    const value = card.dataset.ocrDeadline;
 
     if (
       value === undefined ||
       value === ""
     ) {
+      return null;
+    }
+
+    const number = Number(value);
+
+    return Number.isFinite(number)
+      ? number
+      : null;
+  }
+
+  function calculateFixed(card) {
+    const myMarch =
+      getMyEffectiveMarchSeconds();
+
+    const enemyMarch =
+      getEnemyMarchSeconds(card);
+
+    const remaining =
+      getMinuteSecondValue(
+        card.querySelector(
+          ".remaining-minutes-input"
+        ),
+        card.querySelector(
+          ".remaining-seconds-input"
+        )
+      );
+
+    const delay =
+      parseNumber(insertDelayInput.value);
+
+    const correction =
+      parseNumber(tapCorrectionInput.value);
+
+    if (
+      !Number.isFinite(myMarch) ||
+      myMarch <= 0 ||
+      !Number.isFinite(enemyMarch) ||
+      enemyMarch <= 0 ||
+      !Number.isFinite(remaining) ||
+      remaining < 0 ||
+      !Number.isFinite(delay) ||
+      delay < 0 ||
+      !Number.isFinite(correction)
+    ) {
+      setResultMessage(
+        card,
+        "行軍時間・残り時間・補正値を確認してください。",
+        "danger"
+      );
       return;
     }
 
-    const timestamp = Number(value);
+    const march =
+      card.dataset.cardMode === "march";
 
-    if (!Number.isFinite(timestamp)) {
-      return;
+    /*
+     * 初回だけ現在時刻を使う。
+     * OCRカードなら撮影時刻から算出済みの
+     * 固定時刻をそのまま使用する。
+     */
+    let base = getFixedTime(card);
+
+    if (base === null) {
+      base =
+        Date.now() + remaining * 1000;
+
+      card.dataset.ocrDeadline =
+        String(base);
+
+      card.dataset.ocrFixed = "true";
     }
 
-    // 集結中なら相手の出発予定時刻、
-    // 行軍中なら相手の着弾予定時刻を固定。
-    card.dataset.ocrDeadline =
-      String(timestamp);
+    /*
+     * 集結中：baseは相手の出発時刻
+     * 行軍中：baseは相手の着弾時刻
+     */
+    const enemyDeparture =
+      march
+        ? base - enemyMarch * 1000
+        : base;
 
-    card.dataset.ocrFixed = "true";
+    const enemyArrival =
+      march
+        ? base
+        : base + enemyMarch * 1000;
 
-    // Ver.3.6の保存処理を利用。
+    const myArrival =
+      enemyArrival + delay * 1000;
+
+    const myDeparture =
+      myArrival -
+      myMarch * 1000 +
+      correction * 1000;
+
+    /*
+     * 結果を直接保存する。
+     * Date.now()を再計算に使わない。
+     */
+    card.dataset.enemyDeparture =
+      String(enemyDeparture);
+
+    card.dataset.enemyArrival =
+      String(enemyArrival);
+
+    card.dataset.myArrival =
+      String(myArrival);
+
+    card.dataset.myDeparture =
+      String(myDeparture);
+
+    card.dataset.actualDeparture = "";
+    card.dataset.alerted = "false";
+
+    card.classList.remove(
+      "card-ready",
+      "card-fired"
+    );
+
+    displayRallyCardResult(card);
+    clearAccelerationResult(card);
+    updateCardCountdown(card);
+
     saveAllData();
-  };
+  }
+
+  /*
+   * ボタンのイベントを先に受け取り、
+   * 旧計算処理が二重実行されないようにする。
+   */
+  list.addEventListener(
+    "click",
+    event => {
+      const button = event.target.closest(
+        ".capture-calculate-button"
+      );
+
+      if (!button || !list.contains(button)) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      event.stopImmediatePropagation();
+
+      const card =
+        button.closest(".rally-card");
+
+      if (!card) return;
+
+      prepareAudio();
+      calculateFixed(card);
+    },
+    true
+  );
 
   console.info(
-    "WOS Ver.3.7: 再計算時刻固定 有効"
+    "WOS Ver.3.8: 固定時刻計算 有効"
   );
 })();
