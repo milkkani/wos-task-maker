@@ -4040,19 +4040,22 @@ setInterval(
 
 
 
-/* =========================================================
-   WOS スクショOCR Ver.3.5
 
-   4041行目以降をすべて置き換えるコード
+/* =========================================================
+   WOS スクショOCR Ver.3.6
+   集結終了時刻固定・再計算ズレ防止版
+
+   4041行目以降をすべて置き換える
 
    ・赤い攻撃画面 / 青い防衛画面
-   ・時間の切り抜き範囲を拡大
-   ・複数の画像処理で認識
-   ・認識失敗時も手入力可能
+   ・OCR 6パターン認識
+   ・認識失敗時は手入力可能
    ・集結1～3件対応
-   ・空欄はスキップ
-   ・撮影時刻から経過時間を補正
-   ・既存の計算式には触れない
+   ・スクショ撮影時刻から期限を算出
+   ・計算を押し直しても期限を固定
+   ・再読み込み後も期限を復元
+   ・手動で残り時間を変更すると固定解除
+   ・既存の距離計算式は変更しない
 ========================================================= */
 
 (() => {
@@ -4083,41 +4086,23 @@ setInterval(
     return;
   }
 
-  /*
-   * ホワサバの集結一覧の時間表示位置。
-   *
-   * 横幅を広げて、赤・青両方の
-   * 時間表示を含める。
-   *
-   * 位置は画像全体に対する割合。
-   */
   const rows = [
     { y: 0.199 },
     { y: 0.460 },
     { y: 0.720 }
   ];
 
-  /*
-   * 時間表示の横位置が異なる場合に備え、
-   * 2種類の切り抜き範囲を使用する。
-   */
   const horizontalAreas = [
-    {
-      x: 0.70,
-      w: 0.27
-    },
-    {
-      x: 0.78,
-      w: 0.19
-    }
+    { x: 0.70, w: 0.27 },
+    { x: 0.78, w: 0.19 }
   ];
 
   let recognized = [];
   let reading = false;
   let importing = false;
 
-  function setStatus(text) {
-    statusElement.textContent = text;
+  function setStatus(message) {
+    statusElement.textContent = message;
   }
 
   function setImportEnabled(enabled) {
@@ -4125,29 +4110,26 @@ setInterval(
     importButton.disabled = !enabled;
   }
 
-  function pad(value) {
-    return String(value).padStart(2, "0");
+  function pad(number) {
+    return String(number).padStart(2, "0");
   }
 
-  function formatSeconds(value) {
+  function formatSeconds(seconds) {
     const total = Math.max(
       0,
-      Math.floor(value)
+      Math.floor(seconds)
     );
 
-    const hours =
-      Math.floor(total / 3600);
-
-    const minutes =
-      Math.floor((total % 3600) / 60);
-
-    const seconds =
-      total % 60;
+    const hours = Math.floor(total / 3600);
+    const minutes = Math.floor(
+      (total % 3600) / 60
+    );
+    const remaining = total % 60;
 
     return (
       pad(hours) + ":" +
       pad(minutes) + ":" +
-      pad(seconds)
+      pad(remaining)
     );
   }
 
@@ -4164,12 +4146,6 @@ setInterval(
     );
   }
 
-  /*
-   * OCR結果から時刻を抽出する。
-   *
-   * 誤認識しやすい文字のみ補正。
-   * 数字が欠けた場合は採用しない。
-   */
   function parseTime(text) {
     const normalized = String(text)
       .replace(/[Oo]/g, "0")
@@ -4183,49 +4159,11 @@ setInterval(
       /(\d{1,2}):([0-5]\d):([0-5]\d)/
     );
 
-    if (!match) {
-      return null;
-    }
-
-    const hours = Number(match[1]);
-    const minutes = Number(match[2]);
-    const seconds = Number(match[3]);
-
-    if (
-      hours > 23 ||
-      minutes > 59 ||
-      seconds > 59
-    ) {
-      return null;
-    }
-
-    return (
-      hours * 3600 +
-      minutes * 60 +
-      seconds
-    );
-  }
-
-  /*
-   * 手入力欄は、文字列全体が
-   * 正しい時間形式であることを確認。
-   */
-  function parseManualTime(text) {
-    const value = String(text).trim();
-
-    const match = value.match(
-      /^(\d{1,2}):([0-5]\d):([0-5]\d)$/
-    );
-
-    if (!match) {
-      return null;
-    }
+    if (!match) return null;
 
     const hours = Number(match[1]);
 
-    if (hours > 23) {
-      return null;
-    }
+    if (hours > 23) return null;
 
     return (
       hours * 3600 +
@@ -4234,9 +4172,323 @@ setInterval(
     );
   }
 
+  function parseManualTime(text) {
+    const match = String(text)
+      .trim()
+      .match(
+        /^(\d{1,2}):([0-5]\d):([0-5]\d)$/
+      );
+
+    if (!match) return null;
+
+    const hours = Number(match[1]);
+
+    if (hours > 23) return null;
+
+    return (
+      hours * 3600 +
+      Number(match[2]) * 60 +
+      Number(match[3])
+    );
+  }
+
+  /* =====================================================
+     集結終了時刻の固定
+  ===================================================== */
+
+  function getDeadline(card) {
+    const value = card.dataset.ocrDeadline;
+
+    if (
+      value === undefined ||
+      value === ""
+    ) {
+      return null;
+    }
+
+    const timestamp = Number(value);
+
+    return Number.isFinite(timestamp)
+      ? timestamp
+      : null;
+  }
+
+  function setDeadline(card, timestamp) {
+    if (!Number.isFinite(timestamp)) {
+      return;
+    }
+
+    card.dataset.ocrDeadline =
+      String(timestamp);
+
+    card.dataset.ocrFixed = "true";
+  }
+
+  function clearDeadline(card) {
+    delete card.dataset.ocrDeadline;
+    delete card.dataset.ocrFixed;
+  }
+
   /*
-   * 画像読み込み
+   * OCR取り込み済みカードだけ、
+   * 計算時の基準時刻を固定する。
+   *
+   * 元の calculateRallyCard はそのまま利用。
+   * 計算結果の時刻だけ補正する。
    */
+  const originalCalculateRallyCard =
+    calculateRallyCard;
+
+  calculateRallyCard = function(card) {
+    const deadline = getDeadline(card);
+
+    /*
+     * OCR以外のカードは
+     * 従来の計算方法を維持する。
+     */
+    if (deadline === null) {
+      return originalCalculateRallyCard(card);
+    }
+
+    /*
+     * まず既存の計算処理を実行。
+     * 入力値チェックや速度計算は変更しない。
+     */
+    originalCalculateRallyCard(card);
+
+    const isMarch =
+      card.dataset.cardMode === "march";
+
+    const calculatedBase = Number(
+      isMarch
+        ? card.dataset.enemyArrival
+        : card.dataset.enemyDeparture
+    );
+
+    const baseValue =
+      isMarch
+        ? card.dataset.enemyArrival
+        : card.dataset.enemyDeparture;
+
+    /*
+     * 元の計算が失敗していたら
+     * 結果を上書きしない。
+     */
+    if (
+      baseValue === "" ||
+      !Number.isFinite(calculatedBase)
+    ) {
+      return;
+    }
+
+    /*
+     * 元の計算で求めた時刻と
+     * スクショから確定した時刻との差。
+     */
+    const correction =
+      deadline - calculatedBase;
+
+    const keys = [
+      "enemyDeparture",
+      "enemyArrival",
+      "myDeparture",
+      "myArrival"
+    ];
+
+    /*
+     * 全時刻を同じだけ補正。
+     * 行軍時間・差し込み秒数は維持。
+     */
+    for (const key of keys) {
+      const value = card.dataset[key];
+
+      if (
+        value === undefined ||
+        value === ""
+      ) {
+        continue;
+      }
+
+      const timestamp = Number(value);
+
+      if (Number.isFinite(timestamp)) {
+        card.dataset[key] = String(
+          timestamp + correction
+        );
+      }
+    }
+
+    /*
+     * 表示とカウントダウンを
+     * 補正後の時刻で更新。
+     */
+    displayRallyCardResult(card);
+    updateCardCountdown(card);
+
+    saveAllData();
+  };
+
+  /* =====================================================
+     固定時刻の保存
+  ===================================================== */
+
+  const originalCollectRallyCardData =
+    collectRallyCardData;
+
+  collectRallyCardData = function(card) {
+    const data =
+      originalCollectRallyCardData(card);
+
+    const deadline = getDeadline(card);
+
+    if (deadline !== null) {
+      data.ocrDeadline = deadline;
+    }
+
+    return data;
+  };
+
+  /*
+   * 今後、保存データをカードへ復元するときも
+   * OCRの固定時刻を復元する。
+   */
+  const originalApplySavedRallyCardData =
+    applySavedRallyCardData;
+
+  applySavedRallyCardData = function(
+    card,
+    savedData
+  ) {
+    originalApplySavedRallyCardData(
+      card,
+      savedData
+    );
+
+    const deadline = Number(
+      savedData?.ocrDeadline
+    );
+
+    if (
+      savedData?.ocrDeadline != null &&
+      Number.isFinite(deadline)
+    ) {
+      setDeadline(card, deadline);
+    }
+  };
+
+  /*
+   * この追加コードより先に
+   * loadSavedData() が実行されているため、
+   * 現在表示中のカードも復元する。
+   */
+  try {
+    const savedText =
+      localStorage.getItem(STORAGE_KEY);
+
+    if (savedText) {
+      const saved = JSON.parse(savedText);
+
+      const cards = Array.from(
+        get("rallyCardList")
+          .querySelectorAll(".rally-card")
+      );
+
+      if (Array.isArray(saved.cards)) {
+        saved.cards.forEach((data, index) => {
+          const card = cards[index];
+
+          if (!card) return;
+
+          const deadline = Number(
+            data.ocrDeadline
+          );
+
+          if (
+            data.ocrDeadline != null &&
+            Number.isFinite(deadline)
+          ) {
+            setDeadline(card, deadline);
+          }
+        });
+      }
+    }
+  } catch (error) {
+    console.warn(
+      "OCR固定時刻の復元に失敗",
+      error
+    );
+  }
+
+  /* =====================================================
+     手動変更時の固定解除
+  ===================================================== */
+
+  /*
+   * 残り時間を手入力で変更した場合、
+   * OCR撮影時点の固定時刻は使わない。
+   *
+   * inputイベントはユーザー操作時に発火。
+   * プログラムから値を設定するだけでは
+   * 通常発火しない。
+   */
+  const rallyList = get("rallyCardList");
+
+  rallyList.addEventListener(
+    "input",
+    event => {
+      const target = event.target;
+
+      if (
+        !target.matches(
+          ".remaining-minutes-input, " +
+          ".remaining-seconds-input"
+        )
+      ) {
+        return;
+      }
+
+      const card =
+        target.closest(".rally-card");
+
+      if (!card) return;
+
+      if (getDeadline(card) !== null) {
+        clearDeadline(card);
+        saveAllData();
+      }
+    }
+  );
+
+  /*
+   * 集結中 / 行軍中を手動で切り替えた場合も
+   * 以前の固定時刻は解除する。
+   */
+  rallyList.addEventListener(
+    "click",
+    event => {
+      const button = event.target.closest(
+        "[data-card-mode]"
+      );
+
+      if (!button) return;
+
+      const card =
+        button.closest(".rally-card");
+
+      if (!card) return;
+
+      if (getDeadline(card) !== null) {
+        clearDeadline(card);
+        saveAllData();
+      }
+    },
+    true
+  );
+
+  /* =====================================================
+     OCR画像処理
+  ===================================================== */
+
   function loadImage(file) {
     return new Promise((resolve, reject) => {
       const url =
@@ -4251,7 +4503,6 @@ setInterval(
 
       image.onerror = () => {
         URL.revokeObjectURL(url);
-
         reject(
           new Error(
             "スクショを開けませんでした"
@@ -4263,12 +4514,6 @@ setInterval(
     });
   }
 
-  /*
-   * 時間部分を切り抜く。
-   *
-   * 上下に余白を確保し、
-   * 文字が切れないようにする。
-   */
   function makeCrop(
     image,
     row,
@@ -4371,10 +4616,6 @@ setInterval(
       let value;
 
       if (variant === "white") {
-        /*
-         * 白い数字を抽出する。
-         * 青・赤どちらの背景でも使用。
-         */
         const minimum = Math.min(
           red,
           green,
@@ -4393,11 +4634,7 @@ setInterval(
           maximum - minimum < 95;
 
         value = isLight ? 0 : 255;
-
       } else {
-        /*
-         * 明るさを基準に二値化。
-         */
         const brightness =
           red * 0.299 +
           green * 0.587 +
@@ -4424,12 +4661,10 @@ setInterval(
     return canvas;
   }
 
-  /*
-   * 認識結果を入力欄に表示する。
-   *
-   * 認識できない場合も空欄を残す。
-   * ユーザーが手入力できる。
-   */
+  /* =====================================================
+     認識候補の表示
+  ===================================================== */
+
   function renderCandidates() {
     candidatesElement.innerHTML = "";
 
@@ -4527,35 +4762,35 @@ setInterval(
         grid
       );
 
-      candidatesElement.appendChild(
-        card
-      );
+      candidatesElement.appendChild(card);
     }
 
-    // 認識失敗時も手入力して追加できる
     setImportEnabled(true);
   }
 
-  /*
-   * 画像を選択したとき
-   */
+  /* =====================================================
+     スクショ選択
+  ===================================================== */
+
   imageInput.addEventListener(
     "change",
     () => {
       const file =
         imageInput.files?.[0];
 
-      if (!file) {
-        return;
-      }
+      if (!file) return;
 
+      /*
+       * ファイルの更新日時は
+       * 実際の撮影時刻と異なる場合がある。
+       * 必ずユーザーが確認する。
+       */
       captureInput.value =
         formatLocalDate(
           file.lastModified || Date.now()
         );
 
       recognized = [];
-
       candidatesElement.innerHTML = "";
 
       if (rawElement) {
@@ -4570,15 +4805,14 @@ setInterval(
     }
   );
 
-  /*
-   * OCR認識
-   */
+  /* =====================================================
+     OCR認識
+  ===================================================== */
+
   readButton.addEventListener(
     "click",
     async () => {
-      if (reading) {
-        return;
-      }
+      if (reading) return;
 
       const file =
         imageInput.files?.[0];
@@ -4644,13 +4878,8 @@ setInterval(
           );
 
           const attempts = [];
-
           const validResults = [];
 
-          /*
-           * 横幅2種類 × 画像処理3種類
-           * 合計6回、各行を認識する。
-           */
           for (
             const horizontal of horizontalAreas
           ) {
@@ -4673,18 +4902,16 @@ setInterval(
                   canvas
                 );
 
-              const text =
-                String(
-                  result.data.text || ""
-                ).trim();
+              const text = String(
+                result.data.text || ""
+              ).trim();
 
               const seconds =
                 parseTime(text);
 
-              const confidence =
-                Number(
-                  result.data.confidence || 0
-                );
+              const confidence = Number(
+                result.data.confidence || 0
+              );
 
               attempts.push(
                 variant +
@@ -4697,44 +4924,41 @@ setInterval(
               if (seconds !== null) {
                 validResults.push({
                   seconds,
-                  confidence,
-                  text
+                  confidence
                 });
               }
             }
           }
 
           /*
-           * 有効な時刻が複数あれば、
-           * 一致する結果を優先する。
+           * 複数パターンで一致した
+           * 時間を優先する。
            */
           const groups = new Map();
 
           for (const result of validResults) {
-            const key =
-              result.seconds;
+            const key = result.seconds;
 
-            const current =
-              groups.get(key) || {
+            if (!groups.has(key)) {
+              groups.set(key, {
                 seconds: key,
                 count: 0,
                 confidence: 0
-              };
+              });
+            }
 
-            current.count++;
+            const group = groups.get(key);
 
-            current.confidence = Math.max(
-              current.confidence,
-              result.confidence
-            );
+            group.count++;
 
-            groups.set(key, current);
+            group.confidence +=
+              result.confidence;
           }
 
-          const ranked = Array.from(
+          const sorted = Array.from(
             groups.values()
           ).sort((a, b) => {
-            if (a.count !== b.count) {
+            if (b.count !== a.count) {
               return b.count - a.count;
             }
 
@@ -4745,8 +4969,8 @@ setInterval(
           });
 
           const best =
-            ranked.length
-              ? ranked[0]
+            sorted.length > 0
+              ? sorted[0]
               : null;
 
           recognized.push({
@@ -4788,11 +5012,11 @@ setInterval(
         if (successCount > 0) {
           setStatus(
             successCount +
-            "件の時間を認識しました。数字と撮影時刻を確認してください。"
+            "件を認識しました。時間と撮影時刻を確認してください。"
           );
         } else {
           setStatus(
-            "自動認識できませんでした。下の欄に残り時間を手入力できます。"
+            "自動認識できませんでした。下の欄から手入力できます。"
           );
         }
 
@@ -4828,27 +5052,21 @@ setInterval(
     }
   );
 
-  /*
-   * 集結カードへの取り込み
-   *
-   * 空欄はスキップ。
-   * 認識できた件数に関係なく、
-   * 入力された時間だけ追加する。
-   */
+  /* =====================================================
+     集結カードへ追加
+  ===================================================== */
+
   importButton.addEventListener(
     "click",
     () => {
-      if (importing) {
-        return;
-      }
+      if (importing) return;
 
       importing = true;
 
       try {
-        const capturedAt =
-          new Date(
-            captureInput.value
-          ).getTime();
+        const capturedAt = new Date(
+          captureInput.value
+        ).getTime();
 
         if (
           !captureInput.value ||
@@ -4859,18 +5077,15 @@ setInterval(
           );
         }
 
-        const elapsed =
-          (Date.now() - capturedAt) /
-          1000;
-
-        if (elapsed < -2) {
+        if (
+          capturedAt > Date.now() + 2000
+        ) {
           throw new Error(
             "撮影時刻が未来になっています。"
           );
         }
 
         const items = [];
-
         let expiredCount = 0;
 
         for (
@@ -4895,10 +5110,7 @@ setInterval(
           const value =
             timeInput?.value.trim() || "";
 
-          // 空欄は無視
-          if (!value) {
-            continue;
-          }
+          if (!value) continue;
 
           const seconds =
             parseManualTime(value);
@@ -4911,8 +5123,20 @@ setInterval(
             );
           }
 
+          /*
+           * ここが今回の重要な変更。
+           *
+           * 残り時間ではなく、
+           * スクショ撮影時点から
+           * 集結終了の絶対時刻を計算する。
+           */
+          const deadline =
+            capturedAt +
+            seconds * 1000;
+
           const remaining =
-            seconds - elapsed;
+            (deadline - Date.now()) /
+            1000;
 
           if (remaining <= 0) {
             expiredCount++;
@@ -4921,7 +5145,7 @@ setInterval(
 
           items.push({
             position: index + 1,
-            remaining,
+            deadline,
             mode:
               modeInput?.value === "march"
                 ? "march"
@@ -4959,6 +5183,10 @@ setInterval(
               item.position;
           }
 
+          /*
+           * 先にモードを切り替える。
+           * その後に固定時刻を登録する。
+           */
           const modeButton =
             card.querySelector(
               '[data-card-mode="' +
@@ -4989,36 +5217,58 @@ setInterval(
             );
           }
 
+          /*
+           * 入力欄には取り込み時点の
+           * 残り時間を表示する。
+           *
+           * ただし計算時にはこの数字ではなく
+           * deadlineを基準にする。
+           */
+          const remaining =
+            Math.max(
+              0,
+              Math.ceil(
+                (item.deadline - Date.now()) /
+                1000
+              )
+            );
+
           setMinuteSecondInputs(
-            item.remaining,
+            remaining,
             minutesInput,
             secondsInput
+          );
+
+          /*
+           * 固定時刻をカードへ登録。
+           */
+          setDeadline(
+            card,
+            item.deadline
           );
         }
 
         saveAllData();
 
-        let resultMessage =
+        let message =
           items.length +
-          "件の集結カードを追加しました！";
+          "件の集結カードを追加しました！" +
+          "\n集結終了時刻は固定されています。";
 
         if (expiredCount > 0) {
-          resultMessage +=
+          message +=
             "\n" +
             expiredCount +
             "件は時間切れのためスキップしました。";
         }
 
         setStatus(
-          resultMessage.replace(
-            /\n/g,
-            " "
-          )
+          message.replace(/\n/g, " ")
         );
 
         setImportEnabled(false);
 
-        window.alert(resultMessage);
+        window.alert(message);
 
         list.scrollIntoView({
           behavior: "smooth",
@@ -5028,13 +5278,12 @@ setInterval(
       } catch (error) {
         console.error(error);
 
-        const errorMessage =
+        const message =
           "取り込みエラー：" +
           error.message;
 
-        setStatus(errorMessage);
-
-        window.alert(errorMessage);
+        setStatus(message);
+        window.alert(message);
 
       } finally {
         importing = false;
@@ -5042,9 +5291,15 @@ setInterval(
     }
   );
 
-  /*
-   * 初期状態
-   */
+  /* =====================================================
+     初期状態
+  ===================================================== */
+
   setImportEnabled(false);
+
+  console.info(
+    "WOS OCR Ver.3.6: " +
+    "集結終了時刻固定機能 有効"
+  );
 
 })();
